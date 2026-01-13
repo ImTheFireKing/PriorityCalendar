@@ -165,6 +165,6 @@ def percentCalculate(thatTask : Task, today : Day, existence : list[list[Day]], 
     if (daysAvailable == 0):
         return "You're cooked"
     # Note to self: Fix this later
-    return max(round(100/daysAvailable, 2), 1)
+    return max(round(100-thatTask.getPercent()/daysAvailable, 2), 1)
 
 

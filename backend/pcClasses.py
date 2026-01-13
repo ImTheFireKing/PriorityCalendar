@@ -2,16 +2,16 @@ import datetime
 
 class Task:
     '''Overall class used to get types from smaller types + how we control most logic'''
-    def deepConstructor(taskType : str, taskDate : str, taskName : str):
+    def deepConstructor(taskType : str, taskDate : str, taskName : str, alreadyDone : float = 0.0):
         '''Essentialy a constructor for the smaller types that inherit behaviors from the overall Task class'''
         if taskType == "exam" or taskType == "project":
-            return Major(taskDate, taskName)
+            return Major(taskDate, taskName, alreadyDone)
         elif taskType == "quiz":
-            return Quiz(taskDate, taskName)
+            return Quiz(taskDate, taskName, alreadyDone)
         elif taskType == "hw":
-            return Homework(taskDate, taskName)
+            return Homework(taskDate, taskName, alreadyDone)
         elif taskType == "prep":
-            return Prep(taskDate, taskName)
+            return Prep(taskDate, taskName, alreadyDone)
     # def getDate(self):
     #     '''Returns the date the task occurs as an integer ranging from 1 (Jan 1) to 365 (Dec 31) + 1 for a leap year'''
     #     # Note for later: We need a way to standardize dates; Preferably into a MM-DD format (and maybe MM-DD-YY, but let's focus on MM-DD rn)
@@ -54,25 +54,31 @@ class Task:
 class Homework(Task):
     '''First inherited class, comes with the unique behavior of homework difficulty'''
     # MM-DD-YYYY
-    def __init__(self, taskDate : str, taskName : str, taskDifficulty : str = "Not Selected"):
+    def __init__(self, taskDate : str, taskName : str, alreadyDone : float = 0.0, taskDifficulty : str = "Not Selected"):
         self.name = taskName
         self.date = datetime.date(int(taskDate[6:]), int(taskDate[0:2]), int(taskDate[3:5]))
         self.difficulty = taskDifficulty
+        self.percentDone = alreadyDone
     def getType(self):
         return "homework"
     def setDifficulty(self, taskDifficulty : str):
         self.difficulty = taskDifficulty
     def getDifficulty(self):
         return self.difficulty
+    def getPercent(self):
+        return self.percent
+    def updatePercent(self, updateBy : float):
+        self.percent = self.percent + updateBy
 class Major(Task):
     '''Two classes in one; contains exams for exam logic and projects for project logic'''
-    def __init__(self, taskDate : str, taskName : str, projectOrExam : bool = True):
+    def __init__(self, taskDate : str, taskName : str, alreadyDone : float = 0.0, projectOrExam : bool = True):
         self.name = taskName
         self.date = datetime.date(int(taskDate[6:]), int(taskDate[0:2]), int(taskDate[3:5]))
         if (projectOrExam):
             self.examType = "regular"
         else:
             self.projectType = "individual"
+        self.percentDone = alreadyDone
     def getType(self):
         try:
             if self.examType:
@@ -97,7 +103,7 @@ class Major(Task):
         except TypeError:
             print("wah")
 
-    def setProjectAttributes(self, projectCollaboration : str):
+    def setProjectAttributes(self, projectCollaboration : bool):
         try:
             if self.getType() == "project":
                 self.projectType = projectCollaboration
@@ -114,20 +120,34 @@ class Major(Task):
                 raise TypeError
         except TypeError:
             print("wah")
+    def getPercent(self):
+        return self.percent
+    def updatePercent(self, updateBy : float):
+        self.percent = self.percent + updateBy
 
 class Quiz(Task):
-    def __init__(self, taskDate : str, taskName : str):
+    def __init__(self, taskDate : str, taskName : str, alreadyDone : float = 0.0):
         self.name = taskName
         self.date = datetime.date(int(taskDate[6:]), int(taskDate[0:2]), int(taskDate[3:5]))
+        self.percentDone = alreadyDone
     def getType(self):
         return "quiz"
+    def getPercent(self):
+        return self.percent
+    def updatePercent(self, updateBy : float):
+        self.percent = self.percent + updateBy
 
 class Prep(Task):
-    def __init__(self, taskDate : str, taskName : str):
+    def __init__(self, taskDate : str, taskName : str, alreadyDone : float = 0.0):
         self.name = taskName
         self.date = datetime.date(int(taskDate[6:]), int(taskDate[0:2]), int(taskDate[3:5]))
+        self.percentDone = alreadyDone
     def getType(self):
         return "prep"
+    def getPercent(self):
+        return self.percent
+    def updatePercent(self, updateBy : float):
+        self.percent = self.percent + updateBy
 
 class Events:
     '''Event logic: Contains when and what an event is and whether it's skippable or not'''
@@ -203,6 +223,8 @@ class Day:
             return False
         self.tasks.remove(taskl)
         return True
+    def getTasks(self):
+        return self.tasks
     # def getDate(self):
     #     dateCounter : int = 0
     #     monthPortion : int = int(self.date[0:2])
@@ -239,8 +261,10 @@ class Day:
 
     
 class User:
-     settings : dict[str] = {}
-     settings["lazy"] = [] 
+     def __init__(self, uid : str):
+        self.settings : dict[str] = {}
+        self.settings["lazy"] = []
+        self.uid = uid 
      
 
 
