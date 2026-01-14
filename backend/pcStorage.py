@@ -1,5 +1,15 @@
 import datetime
 import pcClasses
+from pymongo import MongoClient
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+undercroft = os.getenv("mongoConString")
+client = MongoClient(undercroft)
+db = client["PriorityCalendarDB"]
+tasksCollection = db["Tasks"]
+usersCollection = db["Users"]
 
 def getCalendar(uid : str, year : str):
     calendar = []
@@ -8,8 +18,11 @@ def getCalendar(uid : str, year : str):
     while current <= end:
         newDay = pcClasses.Day(current)
         calendar.append(newDay)
-    # if uid in users: grab the cached dates, jump to each date in my cache, and update those games
-    # else, just return the calendar
+    if uid in usersCollection:
+        results = tasksCollection.find({"uid" : uid})
+        tasks = list[results]
+        for task in results:
+            
     return calendar
 
 def storeTask(uid : str, task : pcClasses.Task):
