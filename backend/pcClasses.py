@@ -208,9 +208,15 @@ class Day:
             self.tasks : list[Task] = []
             self.dayEvents : list[Events]= []
             self.date = datetime.date(int(date[6:]), int(date[0:2]), int(date[3:5]))
-            self.dow : str = self.date.isoweekday
+            self.dow : str = Day.valid_days[self.date.isoweekday()]
         except:
-            print("wah")
+            if type(date) != datetime.date:
+                print("wah")
+            else:
+                self.tasks : list[Task] = []
+                self.dayEvents : list[Events] = []
+                self.date = date
+                self.dow = Day.valid_days[self.date.isoweekday()]
 
     def addTask(self, task : Task):
         if task in self.tasks:
@@ -225,6 +231,7 @@ class Day:
         return True
     def getTasks(self):
         return self.tasks
+    
     # def getDate(self):
     #     dateCounter : int = 0
     #     monthPortion : int = int(self.date[0:2])

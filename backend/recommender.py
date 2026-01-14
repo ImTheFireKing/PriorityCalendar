@@ -1,5 +1,6 @@
 from pcClasses import Task, Homework, Major, Quiz, Events, Prep, Day, User
 import datetime
+import pcStorage
 
 def compute_task_score(task : Task, today : Day):
     ''' Thought line: Exams and projects should have the greatest weight out of any kind of task; they also need more time to work on compared to other assignments; Most HWs can be completed in 2 weeks or less, 
