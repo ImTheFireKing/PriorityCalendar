@@ -50,6 +50,8 @@ class Task:
     #     return dateCounter
     def getName(self):
         return self.name
+    def getDate(self):
+        return self.date
     
 class Homework(Task):
     '''First inherited class, comes with the unique behavior of homework difficulty'''
@@ -158,6 +160,8 @@ class Events:
         self.prepNeeded = eventNeedsPrep
     def getName(self):
         return self.name
+    def getDate(self):
+        return self.date
     # def getDate(self):
     #     '''Returns the date the task occurs as an integer ranging from 1 (Jan 1) to 365 (Dec 31) + 1 for a leap year'''
     #     # Note for later: We need a way to standardize dates; Preferably into a MM-DD format (and maybe MM-DD-YYYY, but let's focus on MM-DD rn)
@@ -231,6 +235,18 @@ class Day:
         return True
     def getTasks(self):
         return self.tasks
+    def addEvent(self, event : Events):
+        if event in self.dayEvents:
+            return False
+        else:
+            self.dayEvents.append(event)
+            return True
+    def removeEvent(self, event : Events):
+        if event not in self.dayEvents:
+            return False
+        else:
+            self.dayEvents.remove(event)
+            return True
     
     # def getDate(self):
     #     dateCounter : int = 0
