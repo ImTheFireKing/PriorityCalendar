@@ -1,4 +1,5 @@
-import datetime
+from datetime import datetime
+import datetime as dTime
 
 class Task:
     '''Overall class used to get types from smaller types + how we control most logic'''
@@ -95,7 +96,8 @@ class Major(Task):
                 raise TypeError
         except TypeError:
             # I'm...probably gonna have to deal with this later but I'll cross that bridge when I get to it
-            print("wah")
+            print("Error: Tried to set an exam difficulty for a project")
+            # WELL I GOT TO THAT BRIDGE
     def getExamDifficulty(self):
         try:
             if self.getType() == "exam":
@@ -103,7 +105,7 @@ class Major(Task):
             else:
                 raise TypeError
         except TypeError:
-            print("wah")
+            print("Error: Tried to grab exam difficulty for a project")
 
     def setProjectAttributes(self, projectCollaboration : bool):
         try:
@@ -112,7 +114,7 @@ class Major(Task):
             else:
                 raise TypeError
         except TypeError:
-            print("wah")
+            print("Error: Tried to set project attributes for an exam")
 
     def getProjectAttributes(self):
         try:
@@ -121,7 +123,7 @@ class Major(Task):
             else:
                 raise TypeError
         except TypeError:
-            print("wah")
+            print("Error: Tried to grab project attributes for an exam")
     def getPercent(self):
         return self.percent
     def updatePercent(self, updateBy : float):
@@ -211,11 +213,11 @@ class Day:
         try:
             self.tasks : list[Task] = []
             self.dayEvents : list[Events]= []
-            self.date = datetime.date(int(date[6:]), int(date[0:2]), int(date[3:5]))
+            self.date = dTime.date(int(date[6:]), int(date[0:2]), int(date[3:5]))
             self.dow : str = Day.valid_days[self.date.isoweekday()]
         except:
-            if type(date) != datetime.date:
-                print("wah")
+            if type(date) != dTime.date:
+                print("Error: You somehow gave me something that can't be converted to a date")
             else:
                 self.tasks : list[Task] = []
                 self.dayEvents : list[Events] = []
@@ -287,7 +289,9 @@ class User:
      def __init__(self, uid : str):
         self.settings : dict[str] = {}
         self.settings["lazy"] = []
-        self.uid = uid 
+        self.settings["Tlimit"] = 15
+        self.settings["Elimit"] = 3
+        self.uid = uid
      
 
 
