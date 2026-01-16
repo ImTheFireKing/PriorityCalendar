@@ -5,7 +5,7 @@ from pymongo import MongoClient
 from dotenv import load_dotenv
 import os
 import sys
-
+# Remember: Implement CRUD in Database
 load_dotenv()
 undercroft = os.getenv("mongoConString")
 client = MongoClient(undercroft)
@@ -19,6 +19,7 @@ currentEventsCache : dict[tuple[str, str], list[pcClasses.Events]] = {}
 cacheTooStale = timedelta(0,0,0,0,30)
 cacheTimeStamp : dict[tuple[str, str], datetime.time] = {}
 def getCalendar(uid : str, year : str):
+    # Retrieval of Tasks and Events
     calendar = []
     startOfYear = dTime.date(int(year), 1, 1)
     current = startOfYear
@@ -52,6 +53,7 @@ def getCalendar(uid : str, year : str):
         return currentCalendarCache[yearKey]
 
 def storeTask(uid : str, task : pcClasses.Task):
+    # Creation of Tasks
     user = usersCollection.find_one({"uid" : uid})
     if user:
         tasks = user.get("tasks", [])
@@ -69,20 +71,55 @@ def storeTask(uid : str, task : pcClasses.Task):
         return False
     
 def getTasks(uid : str):
+    # Retrieval of Tasks
     if ("uid", uid) in currentTasksCache:
         return currentTasksCache
     user = usersCollection.find_one({"uid" : uid})
     if user:
-        return user.get("tasks", [])
+        currentTasksCache[("uid", uid)] = user.get("tasks", [])
+        return currentTasksCache
+def updateTasks(uid : str, updatedTask : pcClasses.Task):
+    # Updating of Tasks
+    del currentTasksCache[("uid", uid)]
+    user = usersCollection.find_one({"uid" : uid})
+    if user:
+        tasks = user.get("tasks", [])
+        for task in tasks:
+            if task.getName() == updatedTask.getName():
+                task = updatedTask
+                break
+        usersCollection.update_one(filter={"uid" : uid}, update={"$set": {"tasks" : tasks}})
+        return True
+    else:
+        return False
 
 def getEvents(uid : str):
+    # Retrieval of Events
     if ("uid", uid) in currentEventsCache:
         return currentEventsCache
     user = usersCollection.find_one({"uid" : uid})
     if user:
-        return user.get("events", [])
+        currentEventsCache[("uid", uid)] = user.get("events", [])
+        return currentEventsCache
+    
+def updateEvents(uid : str, updatedEvent : pcClasses.Events):
+    # Updating of Events
+    del currentEventsCache[("uid", uid)]
+    user = usersCollection.find_one({"uid" : uid})
+    if user:
+        events = user.get("events", [])
+        for event in events:
+            if event.getName() == updatedEvent.getName():
+                event = updatedEvent
+                break
+        usersCollection.update_one(filter={"uid" : uid}, update={"$set": {"events" : events}})
+        return True
+    else:
+        return False
+    
 
 def storeEvent(uid : str, event : pcClasses.Events):
+    # Creation of Events
     user = usersCollection.find_one({"uid" : uid})
     if user:
         events = user.get("events", [])
@@ -100,18 +137,19 @@ def storeEvent(uid : str, event : pcClasses.Events):
         return False
     
 def getSettings(uid : str):
+    # Retrieval of Settings
     if ("uid", uid) not in currentSettingsCache:
         user = usersCollection.find_one({"uid" : uid})
         if user:
-            settings = user.get("settings", {})
-            currentSettingsCache[("uid", uid)] = settings
-            return settings
+            currentSettingsCache = user.get("settings", {})
+            return currentSettingsCache
         else:
             return False
     else:
         return currentSettingsCache[("uid", uid)]
     
 def storeSettings(uid : str, settings : dict):
+    # Creation/Update of Settings
     user = usersCollection.find_one({"uid" : uid})
     if user:
         usersCollection.update_one(filter={"uid": uid}, update={"$set": {"settings": settings}})
@@ -121,6 +159,7 @@ def storeSettings(uid : str, settings : dict):
         return False
 
 def deleteTask(uid : str, task : pcClasses.Task):
+    # Deletion of Tasks
     user = usersCollection.find_one({"uid" : uid})
     if user:
         tasks = user.get("tasks", [])
@@ -145,6 +184,7 @@ def deleteTask(uid : str, task : pcClasses.Task):
         return False
 
 def deleteEvent(uid : str, event : pcClasses.Events):
+    # Deletion of Events
     user = usersCollection.find_one({"uid" : uid})
     if user:
         events = user.get("events", [])
@@ -169,18 +209,21 @@ def deleteEvent(uid : str, event : pcClasses.Events):
         return False
     
 def addUser(uid : str, userTasks : list[pcClasses.Task], userEvents : list[pcClasses.Events], userSettings : dict):
+    # Creation of a User
     if not usersCollection.find({"uid" : uid}):
         usersCollection.insert_one({"uid" : uid, "tasks" : userTasks, "events" : userEvents, "settings" : userSettings})
         return True
     else:
         return False
 def getUser(uid : str):
+    # Retrieval of a User
     user = usersCollection.find_one({"uid" : uid})
     if user:
         return user
     else:
         return False
 def delUser(uid : str):
+    # Deletion of User, Settings
     usersCollection.delete_many(filter={"uid" : uid})
     cacheRemovalList = []
     for u, year in currentCalendarCache.keys():
