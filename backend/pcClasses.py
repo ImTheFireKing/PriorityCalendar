@@ -291,6 +291,7 @@ class User:
         self.settings["lazy"] = []
         self.settings["Tlimit"] = 15
         self.settings["Elimit"] = 3
+        self.settings["expired"] = dTime.timedelta(0,0,0,0,0,0,2)
         self.uid = uid
      
 
