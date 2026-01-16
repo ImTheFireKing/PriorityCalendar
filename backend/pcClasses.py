@@ -70,8 +70,12 @@ class Homework(Task):
         return self.difficulty
     def getPercent(self):
         return self.percent
+    def updateDate(self, newDate : str):
+        self.date = datetime.date(int(newDate[6:]), int(newDate[0:2]), int(newDate[3:5]))
     def updatePercent(self, updateBy : float):
         self.percent = self.percent + updateBy
+    def getSpecial(self):
+        return self.getDifficulty()
 class Major(Task):
     '''Two classes in one; contains exams for exam logic and projects for project logic'''
     def __init__(self, taskDate : str, taskName : str, alreadyDone : float = 0.0, projectOrExam : bool = True):
@@ -92,11 +96,12 @@ class Major(Task):
         try:
             if self.getType() == "exam":
                 self.examType = examDifficulty
+                return True
             else:
                 raise TypeError
         except TypeError:
             # I'm...probably gonna have to deal with this later but I'll cross that bridge when I get to it
-            print("Error: Tried to set an exam difficulty for a project")
+            return "Error: Tried to set an exam difficulty for a project"
             # WELL I GOT TO THAT BRIDGE
     def getExamDifficulty(self):
         try:
@@ -105,7 +110,7 @@ class Major(Task):
             else:
                 raise TypeError
         except TypeError:
-            print("Error: Tried to grab exam difficulty for a project")
+            return ("Error: Tried to grab exam difficulty for a project")
 
     def setProjectAttributes(self, projectCollaboration : bool):
         try:
@@ -114,7 +119,7 @@ class Major(Task):
             else:
                 raise TypeError
         except TypeError:
-            print("Error: Tried to set project attributes for an exam")
+            return ("Error: Tried to set project attributes for an exam")
 
     def getProjectAttributes(self):
         try:
@@ -123,11 +128,18 @@ class Major(Task):
             else:
                 raise TypeError
         except TypeError:
-            print("Error: Tried to grab project attributes for an exam")
+            return ("Error: Tried to grab project attributes for an exam")
     def getPercent(self):
         return self.percent
     def updatePercent(self, updateBy : float):
         self.percent = self.percent + updateBy
+    def updateDate(self, newDate : str):
+        self.date = datetime.date(int(newDate[6:]), int(newDate[0:2]), int(newDate[3:5]))
+    def getSpecial(self):
+        if self.getType() == "exam":
+            return self.getExamDifficulty()
+        else:
+            return self.getProjectAttributes()
 
 class Quiz(Task):
     def __init__(self, taskDate : str, taskName : str, alreadyDone : float = 0.0):
@@ -136,10 +148,14 @@ class Quiz(Task):
         self.percentDone = alreadyDone
     def getType(self):
         return "quiz"
+    def updateDate(self, newDate : str):
+        self.date = datetime.date(int(newDate[6:]), int(newDate[0:2]), int(newDate[3:5]))
     def getPercent(self):
         return self.percent
     def updatePercent(self, updateBy : float):
         self.percent = self.percent + updateBy
+    def getSpecial(self):
+        return None
 
 class Prep(Task):
     def __init__(self, taskDate : str, taskName : str, alreadyDone : float = 0.0):
@@ -148,11 +164,14 @@ class Prep(Task):
         self.percentDone = alreadyDone
     def getType(self):
         return "prep"
+    def updateDate(self, newDate : str):
+        self.date = datetime.date(int(newDate[6:]), int(newDate[0:2]), int(newDate[3:5]))
     def getPercent(self):
         return self.percent
     def updatePercent(self, updateBy : float):
         self.percent = self.percent + updateBy
-
+    def getSpecial(self):
+        return None
 class Events:
     '''Event logic: Contains when and what an event is and whether it's skippable or not'''
     def __init__(self, eventName : str, eventDate : str, eventImportant : bool = False, eventNeedsPrep : bool = False):
@@ -164,6 +183,8 @@ class Events:
         return self.name
     def getDate(self):
         return self.date
+    def updateDate(self, newDate : str):
+        self.date = datetime.date(int(newDate[6:]), int(newDate[0:2]), int(newDate[3:5]))
     # def getDate(self):
     #     '''Returns the date the task occurs as an integer ranging from 1 (Jan 1) to 365 (Dec 31) + 1 for a leap year'''
     #     # Note for later: We need a way to standardize dates; Preferably into a MM-DD format (and maybe MM-DD-YYYY, but let's focus on MM-DD rn)
@@ -217,7 +238,7 @@ class Day:
             self.dow : str = Day.valid_days[self.date.isoweekday()]
         except:
             if type(date) != dTime.date:
-                print("Error: You somehow gave me something that can't be converted to a date")
+                return "Error: You somehow gave me something that can't be converted to a date"
             else:
                 self.tasks : list[Task] = []
                 self.dayEvents : list[Events] = []
@@ -249,6 +270,8 @@ class Day:
         else:
             self.dayEvents.remove(event)
             return True
+    def getEvents(self):
+        return self.dayEvents
     
     # def getDate(self):
     #     dateCounter : int = 0
