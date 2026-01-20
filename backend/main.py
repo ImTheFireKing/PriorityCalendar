@@ -9,6 +9,7 @@ def createTask(uid : str, taskName : str, taskDate : str, taskType : str, existe
     index = (newTask.getDate() - dTime.date(newTask.getDate().year, 1 ,1)).days
     existence[index].addTask(newTask)
     pcStorage.storeTask(uid, newTask)
+    return newTask
 
 def checkTasks(uid : str, calendar : list[pcClasses.Day]):
     """Checks all tasks to ensure that both due dates aren't passed (give a two week-ish grace period by default...OR WE COULD USE SETTINGS) and that percentages aren't at/above 100; In theory, 100 percent should be the only check, but :shrug:"""
@@ -17,15 +18,17 @@ def checkTasks(uid : str, calendar : list[pcClasses.Day]):
     for task in allTasks:
         if task.getPercent() >= 100 or (dTime.today().date - task.getDate() > settings["expired"]):
             deleteTask(uid, calendar, task)
+
 def taskComplete(uid : str, task : pcClasses.Task, percentDone : float):
     task.updatePercent(percentDone)
     return pcStorage.updateTasks(uid, task)
 
 def deleteTask(uid : str, calendar : list[pcClasses.Day], task : pcClasses.Task):
     """Manual/automatic mechanism for deleting tasks from both the calendar and backend if a task is marked for deletion by the user or the system"""
-    pcStorage.deleteTask(uid, task)
+    status1 = pcStorage.deleteTask(uid, task)
     index = (task.getDate() - dTime.date(task.getDate().year, 1, 1)).days
-    calendar[index].removeTask(task)
+    status2 = calendar[index].removeTask(task)
+    return status1 and status2
     # I feel like I'm forgetting something but I don't know why...
 def getTasksForDay(uid : str, day : pcClasses.Day):
     return day.getTasks()
@@ -49,8 +52,8 @@ def getRecommendationsForToday(uid : str):
         percentages.append(recommender.percentCalculate(toDo[i][1], today, calendar))
     forToday : dict = {"tasks" : toDo, "events" : events, "howMuch" : percentages}
     return forToday
-# TODO: Work on creating systems to update a task/event's attributes
-# Allow the ability to update a task/event's due date and special attribute; Updates the Calendar to reflect the changed date (also updates storage)
+# TODO: Work on creating systems to update a task/event's attributes (Done)
+# Allow the ability to update a task/event's due date and special attribute (Done) ; Updates the Calendar to reflect the changed date (also updates storage) (Done)
 def updateTask(task : pcClasses.Task, field : str, newInfo : str, uid : str, calendar : list[pcClasses.Day]):
     if field == "dueDate":
         index = (task.getDate() - dTime.date(task.getDate().year, 1 ,1)).days
@@ -58,10 +61,33 @@ def updateTask(task : pcClasses.Task, field : str, newInfo : str, uid : str, cal
         task.updateDate(newInfo)
         index = (task.getDate() - dTime.date(task.getDate().year, 1, 1)).days
         calendar[index].addTask(task)
-        pcStorage.updateTasks(uid, task)
+        return pcStorage.updateTasks(uid, task)
     elif field == "special":
         taskType = task.getType()
         if taskType == "homework":
+            task.setDifficulty(newInfo)
+        elif taskType == "exam":
+            task.setExamDifficulty(newInfo)
+        elif taskType == "project":
+            task.setProjectAttributes(newInfo=="true")
+        else:
+            return "Error: Attempted to update special field in a non-special task"
+        return pcStorage.updateTasks(uid, task)
+        
+
+def updateEvent(event : pcClasses.Events, field : str, newInfo : str, uid : str, calendar : list[pcClasses.Day]):
+    if field == "date":
+        index = (event.getDate() - dTime.date(event.getDate().year, 1, 1)).days
+        calendar[index].removeEvent(event)
+        event.updateDate(newInfo)
+        index = (event.getDate()-dTime.date(event.getDate().year, 1, 1)).days
+        calendar[index].addEvent(event)
+        return pcStorage.updateEvents(uid, event)
+    elif field == "importance":
+        event.setImportance(newInfo == "true")
+    elif field == "prep":
+        event.setPrepNeeded(newInfo == "true")
+    return pcStorage.updateEvents(uid, event)
         
 
 def createEvent(uid : str, eventName : str, eventDate : str, existence : list[pcClasses.Day], needsPrep : bool = False, isImportant : bool = False):

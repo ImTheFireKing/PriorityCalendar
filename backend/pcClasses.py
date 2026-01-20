@@ -224,8 +224,12 @@ class Events:
     
     def getImportance(self):
         return self.importance
+    def setImportance(self, importance : bool):
+        self.importance = importance
     def getPrepNeeded(self):
         return self.prepNeeded
+    def setPrepNeeded(self, prep : bool):
+        self.prepNeeded = prep
     
 class Day:
     '''Kinda realized today that I sorta need a day class to hold information such as what tasks it contains and what day of the week it is...'''
