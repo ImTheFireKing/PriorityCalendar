@@ -1,5 +1,5 @@
-from recommender import *
-from pcClasses import *
+from main import *
+from 
 
 calendar = []
 
