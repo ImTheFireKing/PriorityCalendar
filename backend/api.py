@@ -100,10 +100,59 @@ class GetEvent(BaseModel):
 @app.get("/users/{uid}/events")
 def getEvent(uid : str, dataGiven : GetEvent):
     events = pcStorage.getEvents(uid)
-    for eve
+    for event in events:
+        if event.getName() == dataGiven.name:
+            return {"event" : [{
+                "name" : event.getName(),
+                "date" : event.getDate(),
+                "needsPrep" : event.getPrepNeeded(),
+                "importance" : event.getImportance()
+            }]}
 
-
-
+class UpdateEvent:
+    name : str
+    date : str | None = None
+    needsPrep : str | None = None
+    isImportant : str | None = None
+@app.patch("/users/{uid}/events")    
+def updateEvent(uid : str, dataGiven : UpdateEvent):
+    #MM-DD-YYYY
+    events = pcStorage.getEvents(uid)
+    eventFound = None
+    for event in events:
+        if event.getName() == dataGiven.name:
+            eventFound = event
+            break
+    if eventFound:
+        statusList : dict[str, dict[str]] = {}
+        calendar = pcStorage.getCalendar(uid, dataGiven.date[6:])
+        if dataGiven.date:
+            outcome = main.updateEvent(eventFound, "date", dataGiven.date, uid, calendar)
+            statusList["date"] = {"date" : outcome if type(outcome) == str else "ok"} 
+        if dataGiven.needsPrep:
+            outcome = main.updateEvent(eventFound, "prep", dataGiven.needsPrep, calendar)
+            statusList["prep"] = {"prep" : outcome if type(outcome) == str else "ok"}
+        if dataGiven.isImportant:
+            outcome = main.updateEvent(eventFound, "importance", dataGiven.isImportant, )
+            statusList["importance"] = {"importance" : "ok" if outcome else "Error: Failed to update percent of task completed"}
+        return statusList
+    else:
+        return {"status" : "Error: Task not found"}
+    
+class DeleteEvent:
+    name : str
+@app.delete("/users/{uid}/events")
+def deleteEvent(uid : str, dataGiven : DeleteEvent):
+    events = pcStorage.getEvents(uid)
+    eventFound = None
+    for event in events:
+        if event.getName() == dataGiven.name:
+            eventFound = event
+            break
+    if eventFound:
+        calendar = pcStorage.getCalendar(uid, dataGiven.date[6:])
+        outcome = main.deleteEvent(uid, eventFound, calendar)
+        return {"status" : "ok" if outcome else "Error: Task could not be found in database and/or day"}
 
 
 # Section 3: Recommendations
@@ -134,4 +183,21 @@ def sendRecommendations(uid : str):
             for event in events
         ]
     }
+
+# Think I just got settings left and that's the framework for APIs done...and backend done as a result
+class GetSetting:
+    field : str
+@app.get("/users/{uid}/settings")
+def getSetting(uid : str, dataGiven : GetSetting):
+    settings = pcStorage.getSettings(uid)
+    if dataGiven.field not in settings:
+        return {"status" : "Error: Field requested non-existent"}
+    else:
+        return settings[dataGiven.field]
+    
+class updateSetting:
+    newDays : list[str] | None = None
+    newELimit : int | None = None
+    newTLimit : int | None = None
+    newExpired : # Figure this out
 

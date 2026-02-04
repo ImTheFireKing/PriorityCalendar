@@ -102,31 +102,6 @@ def checkEvents(uid : str, calendar : list[pcClasses.Day]):
             deleteEvent(uid, event, calendar)
 def deleteEvent(uid : str, event : pcClasses.Events, calendar : list[pcClasses.Day]):
     """Any event should only be deleted given the following circumstances: the event has already passed or the user has requested to delete the event"""
-    pcStorage.deleteEvent(uid, event)
     index = (event.getDate() - dTime.date(event.getDate().year, 1, 1)).days
     calendar[index].removeEvent(event)
-def main():
-    uid = "0002"
-    testUser = pcClasses.User(uid)
-    pcStorage.addUser(uid, [], [], testUser.settings)
-    today = datetime.today().date
-
-    # 1. Make sure the calendar is loaded for this year
-    year_str = str(datetime.today().year)
-    calendar = pcStorage.getCalendar(uid, year_str)
-
-    # 2. Get today’s recommendations
-    recs = getRecommendationsForToday(uid)
-
-    # 3. For now, just print them (CLI mode)
-    print("Tasks for today:")
-    for i in range(len(recs[0])):
-        print(f"- {recs[0][i].getName()} (Due Date: {recs[0][i].getDate()}, do {recs[2][i]}%)")
-
-    print("\nEvents to watch for:")
-    for e in recs[1]:
-        print(f"- {e.getName()} (important={e.getImportance()}, prep={e.getPrepNeeded()})")
-
-
-if __name__ == "__main__":
-    main() 
+    return pcStorage.deleteEvent(uid, event)
