@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import main
 import pcStorage
+import datetime as dTime
 
 app = FastAPI()
 # Section 1: Tasks
@@ -199,5 +200,24 @@ class updateSetting:
     newDays : list[str] | None = None
     newELimit : int | None = None
     newTLimit : int | None = None
-    newExpired : # Figure this out
+    # By default, keep expiration date at two weeks; Else, allow changes to preset values (2 weeks, 1 week, 4 weeks)
+    newExpiration : str | None = None
+@app.patch("/users/{uid}/settings")
+def updateSettings(uid : str, dataGiven : updateSetting):
+    settings = pcStorage.getSettings(uid)
+    if dataGiven.newDays:
+        settings["lazy"] = dataGiven.newDays
+    if dataGiven.newELimit:
+        settings["Elimit"] = dataGiven.newELimit
+    if dataGiven.newTLimit:
+        settings["Tlimit"] = dataGiven.newTLimit
+    if dataGiven.newExpiration:
+        if dataGiven.newExpiration == "2":
+            settings["expired"] = dTime.timedelta(0,0,0,0,0,0,2)
+        elif dataGiven.newExpiration == "1":
+            settings["expired"] = dTime.timedelta(0,0,0,0,0,0,1)
+        elif dataGiven.newExpiration == "4":
+            settings["expired"] = dTime.timedelta(0,0,0,0,0,0,4)
+    return {"status" : "ok"}
+
 
