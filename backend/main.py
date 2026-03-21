@@ -16,7 +16,7 @@ def checkTasks(uid : str, calendar : list[pcClasses.Day]):
     allTasks = pcStorage.getTasks(uid)
     settings = pcStorage.getSettings(uid)
     for task in allTasks:
-        if task.getPercent() >= 100 or (dTime.today().date - task.getDate() > settings["expired"]):
+        if task.getPercent() >= 100 or (dTime.datetime.today().date() - task.getDate() > settings["expired"]):
             deleteTask(uid, calendar, task)
 
 def taskComplete(uid : str, task : pcClasses.Task, percentDone : float):
@@ -47,13 +47,12 @@ def getRecommendationsForToday(uid : str):
         toDo : list[(int, pcClasses.Task)] = recommender.task_recommender(calendar, datetime.now().year)
         events : list[(int, pcClasses.Events)] = recommender.event_recommender(calendar, datetime.now().year)
     percentages : list[float] = []
-    today = pcClasses.Day(datetime.today())
+    today = pcClasses.Day(datetime.today().date())
     for i in range(len(toDo)):
         percentages.append(recommender.percentCalculate(toDo[i][1], today, calendar))
     forToday : dict = {"tasks" : toDo, "events" : events, "howMuch" : percentages}
     return forToday
-# TODO: Work on creating systems to update a task/event's attributes (Done)
-# Allow the ability to update a task/event's due date and special attribute (Done) ; Updates the Calendar to reflect the changed date (also updates storage) (Done)
+
 def updateTask(task : pcClasses.Task, field : str, newInfo : str, uid : str, calendar : list[pcClasses.Day]):
     if field == "dueDate":
         index = (task.getDate() - dTime.date(task.getDate().year, 1 ,1)).days
@@ -92,13 +91,13 @@ def updateEvent(event : pcClasses.Events, field : str, newInfo : str, uid : str,
 
 def createEvent(uid : str, eventName : str, eventDate : str, existence : list[pcClasses.Day], needsPrep : bool = False, isImportant : bool = False):
     newEvent : pcClasses.Events = pcClasses.Events(eventName, eventDate, isImportant, needsPrep)
-    index = (newEvent.getDate() - datetime.date(newEvent.getDate().year, 1 ,1)).days
-    existence[index].addTask(newEvent)
-    pcStorage.storeTask(uid, newEvent)
+    index = (newEvent.getDate() - dTime.date(newEvent.getDate().year, 1 ,1)).days
+    existence[index].addEvent(newEvent)
+    pcStorage.storeEvent(uid, newEvent)
 def checkEvents(uid : str, calendar : list[pcClasses.Day]):
     events = pcStorage.getEvents(uid)
     for event in events:
-        if event.getDate() - datetime.today().date < 0:
+        if event.getDate() - datetime.today().date() < 0:
             deleteEvent(uid, event, calendar)
 def deleteEvent(uid : str, event : pcClasses.Events, calendar : list[pcClasses.Day]):
     """Any event should only be deleted given the following circumstances: the event has already passed or the user has requested to delete the event"""

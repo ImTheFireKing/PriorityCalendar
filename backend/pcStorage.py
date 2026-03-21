@@ -8,7 +8,7 @@ import sys
 # Remember: Implement CRUD in Database
 load_dotenv()
 undercroft = os.getenv("mongoConString")
-client = MongoClient(undercroft)
+client = MongoClient(undercroft, tlsAllowInvalidCertificates=True)
 client.admin.command("ping")
 db = client["PriorityCalendarDB"]
 usersCollection = db["Users"]
@@ -33,16 +33,24 @@ def getCalendar(uid : str, year : str):
             calendar.append(newDay)
             current += timedelta(days=1)
         user = usersCollection.find_one({"uid" : uid})
-        currentEventsCache["uid", uid] = []
-        currentTasksCache["uid", uid] = []
+        currentEventsCache[("uid", uid)] = []
+        currentTasksCache[("uid", uid)] = []
         if user:
-            tasks : list[pcClasses.Task] = user.get("tasks", [])
-            events : list[pcClasses.Events] = user.get("events", [])
+            realTasks : list[pcClasses.Task] = []
+            tasks = user.get("tasks", [])
+            realEvents : list[pcClasses.Events] = [] 
+            events = user.get("events", [])
             for task in tasks:
+                trueTask = pcClasses.Task.fromDict(task)
+                realTasks.append(trueTask)
+            for event in events:
+                trueEvent = pcClasses.Events.fromDict(event)
+                realEvents.append(trueEvent)
+            for task in realTasks:
                 index = (task.getDate() - startOfYear).days
                 calendar[index].addTask(task)
-                currentTasksCache["uid", uid].append(task)
-            for event in events:
+                currentTasksCache[("uid", uid)].append(task)
+            for event in realEvents:
                 index = (event.getDate() - startOfYear).days
                 calendar[index].addEvent(event)
                 currentEventsCache[("uid", uid)].append(event)
@@ -57,15 +65,17 @@ def storeTask(uid : str, task : pcClasses.Task):
     user = usersCollection.find_one({"uid" : uid})
     if user:
         tasks = user.get("tasks", [])
-        tasks.append(task)
+        tasks.append(task.toDict())
         usersCollection.update_one(filter={"uid": uid}, update={"$set": {"tasks": tasks}})
         cacheRemovalList = []
         for u, year in currentCalendarCache.keys():
             if u == uid:
                 cacheRemovalList.append(year)
         for year in cacheRemovalList:
-            del currentCalendarCache[(uid, year)]
-        del currentTasksCache[("uid", uid)]
+            if (uid, year) in currentCalendarCache:
+                del currentCalendarCache[(uid, year)]
+        if ("uid", uid) in currentTasksCache:
+            del currentTasksCache[("uid", uid)]
         return True
     else:
         return False
@@ -73,20 +83,26 @@ def storeTask(uid : str, task : pcClasses.Task):
 def getTasks(uid : str):
     # Retrieval of Tasks
     if ("uid", uid) in currentTasksCache:
-        return currentTasksCache
+        return currentTasksCache[("uid", uid)]
     user = usersCollection.find_one({"uid" : uid})
     if user:
         currentTasksCache[("uid", uid)] = user.get("tasks", [])
-        return currentTasksCache
+        for i in range(len(currentTasksCache[("uid", uid)])):
+            currentTasksCache[("uid", uid)][i] = pcClasses.Task.fromDict(currentTasksCache[("uid", uid)][i])
+        return currentTasksCache[("uid", uid)]
+    else:
+        return []
 def updateTasks(uid : str, updatedTask : pcClasses.Task):
     # Updating of Tasks
-    del currentTasksCache[("uid", uid)]
+    if ("uid", uid) in currentTasksCache:
+        del currentTasksCache[("uid", uid)]
     user = usersCollection.find_one({"uid" : uid})
+    formattedTask = updatedTask.toDict()
     if user:
         tasks = user.get("tasks", [])
-        for task in tasks:
-            if task.getName() == updatedTask.getName():
-                task = updatedTask
+        for i in range(len(tasks)):
+            if tasks[i]["name"] == formattedTask["name"]:
+                tasks[i] = formattedTask
                 break
         usersCollection.update_one(filter={"uid" : uid}, update={"$set": {"tasks" : tasks}})
         return True
@@ -96,21 +112,27 @@ def updateTasks(uid : str, updatedTask : pcClasses.Task):
 def getEvents(uid : str):
     # Retrieval of Events
     if ("uid", uid) in currentEventsCache:
-        return currentEventsCache
+        return currentEventsCache[("uid", uid)]
     user = usersCollection.find_one({"uid" : uid})
     if user:
         currentEventsCache[("uid", uid)] = user.get("events", [])
-        return currentEventsCache
+        for i in range(len(currentEventsCache[("uid", uid)])):
+            currentEventsCache[("uid", uid)][i] = pcClasses.Events.fromDict(currentEventsCache[("uid", uid)][i])
+        return currentEventsCache[("uid", uid)]
+    else:
+        return []
     
 def updateEvents(uid : str, updatedEvent : pcClasses.Events):
     # Updating of Events
-    del currentEventsCache[("uid", uid)]
+    if ("uid", uid) in currentEventsCache:
+        del currentEventsCache[("uid", uid)]
     user = usersCollection.find_one({"uid" : uid})
+    formattedEvent = updatedEvent.toDict()
     if user:
         events = user.get("events", [])
-        for event in events:
-            if event.getName() == updatedEvent.getName():
-                event = updatedEvent
+        for i in range(len(events)):
+            if events[i]["name"] == formattedEvent["name"]:
+                events[i] = formattedEvent
                 break
         usersCollection.update_one(filter={"uid" : uid}, update={"$set": {"events" : events}})
         return True
@@ -123,15 +145,17 @@ def storeEvent(uid : str, event : pcClasses.Events):
     user = usersCollection.find_one({"uid" : uid})
     if user:
         events = user.get("events", [])
-        events.append(event)
+        events.append(event.toDict())
         usersCollection.update_one(filter={"uid": uid}, update={"$set": {"events": events}})
         cacheRemovalList = []
         for u, year in currentCalendarCache.keys():
             if u == uid:
                 cacheRemovalList.append(year)
         for year in cacheRemovalList:
-            del currentCalendarCache[(uid, year)]
-        del currentEventsCache[("uid", uid)]
+            if (uid, year) in currentCalendarCache:
+                del currentCalendarCache[(uid, year)]
+        if ("uid", uid) in currentEventsCache:
+            del currentEventsCache[("uid", uid)]
         return True
     else:
         return False
@@ -141,10 +165,10 @@ def getSettings(uid : str):
     if ("uid", uid) not in currentSettingsCache:
         user = usersCollection.find_one({"uid" : uid})
         if user:
-            currentSettingsCache = user.get("settings", {})
-            return currentSettingsCache
+            currentSettingsCache [("uid", uid)]= user.get("settings", {})
+            return currentSettingsCache[("uid", uid)]
         else:
-            return False
+            return {}
     else:
         return currentSettingsCache[("uid", uid)]
     
@@ -153,7 +177,8 @@ def storeSettings(uid : str, settings : dict):
     user = usersCollection.find_one({"uid" : uid})
     if user:
         usersCollection.update_one(filter={"uid": uid}, update={"$set": {"settings": settings}})
-        del currentSettingsCache["uid", uid]
+        if ("uid", uid) in currentSettingsCache:
+            del currentSettingsCache[("uid", uid)]
         return True
     else:
         return False
@@ -161,11 +186,12 @@ def storeSettings(uid : str, settings : dict):
 def deleteTask(uid : str, task : pcClasses.Task):
     # Deletion of Tasks
     user = usersCollection.find_one({"uid" : uid})
+    formattedTask = task.toDict()
     if user:
         tasks = user.get("tasks", [])
         index = 0
         for i in range(len(tasks)):
-            if tasks[i] == task:
+            if tasks[i] == formattedTask:
                 index = i
                 break
         else:
@@ -177,8 +203,10 @@ def deleteTask(uid : str, task : pcClasses.Task):
             if u == uid:
                 cacheRemovalList.append(year)
         for year in cacheRemovalList:
-            del currentCalendarCache[(uid, year)]
-        del currentTasksCache[("uid", uid)]
+            if (uid, year) in currentCalendarCache:
+                del currentCalendarCache[(uid, year)]
+        if ("uid", uid) in currentTasksCache:
+            del currentTasksCache[("uid", uid)]
         return True
     else:
         return False
@@ -186,11 +214,12 @@ def deleteTask(uid : str, task : pcClasses.Task):
 def deleteEvent(uid : str, event : pcClasses.Events):
     # Deletion of Events
     user = usersCollection.find_one({"uid" : uid})
+    formattedEvent = event.toDict()
     if user:
         events = user.get("events", [])
         index = 0
         for i in range(len(events)):
-            if events[i] == event:
+            if events[i] == formattedEvent:
                 index = i
                 break
         else:
@@ -202,8 +231,10 @@ def deleteEvent(uid : str, event : pcClasses.Events):
             if u == uid:
                 cacheRemovalList.append(year)
         for year in cacheRemovalList:
-            del currentCalendarCache[(uid, year)]
-        del currentEventsCache[("uid", uid)]
+            if (uid, year) in currentCalendarCache:
+                del currentCalendarCache[(uid, year)]
+        if ("uid", uid) in currentEventsCache:
+            del currentEventsCache[("uid", uid)]
         return True
     else:
         return False
@@ -230,8 +261,14 @@ def delUser(uid : str):
         if u == uid:
             cacheRemovalList.append(year)
     for year in cacheRemovalList:
-        del currentCalendarCache[(uid, year)]
-        del cacheTimeStamp[(uid, year)]
-    del currentSettingsCache[("uid", uid)]
-    del currentTasksCache[("uid", uid)]
-    del currentEventsCache[("uid", uid)]
+        if (uid, year) in currentCalendarCache:
+            del currentCalendarCache[(uid, year)]
+        
+        if (uid, year) in cacheTimeStamp:
+            del cacheTimeStamp[(uid, year)]
+    if ("uid", uid) in currentSettingsCache:
+        del currentSettingsCache[("uid", uid)]
+    if ("uid", uid) in currentTasksCache:
+        del currentTasksCache[("uid", uid)]
+    if ("uid", uid) in currentEventsCache:
+        del currentEventsCache[("uid", uid)]

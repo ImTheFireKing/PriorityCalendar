@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi import HTTPException
 from pydantic import BaseModel
 import main
 import pcStorage
@@ -21,14 +22,11 @@ def createTask(uid : str, dataGiven : CreateTask):
         main.updateTask(newTask, "special", dataGiven.special, uid, calendar)
     return {"status" : "ok"}
 
-class GetTask(BaseModel):
-    name : str
-    date : str
 @app.get("/users/{uid}/tasks")
-def getTask(uid : str, taskDetails : GetTask):
+def getTask(uid : str, taskName : str):
     tasks = pcStorage.getTasks(uid)
     for task in tasks:
-        if task.getName() == taskDetails.name:
+        if task.getName() == taskName:
             return {"task" :[
                 {
                 "name" : task.getName(),
@@ -36,6 +34,8 @@ def getTask(uid : str, taskDetails : GetTask):
                 "dueDate" : task.getDate().isoformat(),
                 "otherDetails" : task.getSpecial()
             }]}
+    else:
+        raise HTTPException(status_code=404, detail="Error: Task could not be found")
 class UpdateTask(BaseModel):
     taskName : str
     date : str | None = None
@@ -52,19 +52,28 @@ def updateTask(uid : str, dataGiven : UpdateTask):
             break
     if taskFound:
         statusList : dict[str, dict[str]] = {}
-        calendar = pcStorage.getCalendar(uid, dataGiven.date[6:])
+        calendar = pcStorage.getCalendar(uid, str(taskFound.getDate().year))
         if dataGiven.date:
             outcome = main.updateTask(taskFound, "date", dataGiven.date, uid, calendar)
-            statusList["status"] = {"date" : outcome if type(outcome) == str else "ok"} 
+            if type(outcome) == str:
+                raise HTTPException(status_code=400, detail=outcome)
+            else:
+                statusList["status"] = {"date" : "ok"} 
         if dataGiven.special:
-            outcome = main.updateTask(taskFound, "special", dataGiven.special, calendar)
-            statusList["status"] = {"special" : outcome if type(outcome) == str else "ok"}
+            outcome = main.updateTask(taskFound, "special", dataGiven.special, uid, calendar)
+            if type(outcome) == str:
+                raise HTTPException(status_code=400, detail=outcome)
+            else:
+                statusList["status"] = {"special" : "ok"}
         if dataGiven.percentChange:
             outcome = main.taskComplete(uid, taskFound, dataGiven.percentChange)
-            statusList["status"] = {"percentChange" : "ok" if outcome else "Error: Failed to update percent of task completed"}
+            if not outcome:
+                raise HTTPException(status_code=404, detail="Error: Failed to update percent of task completed")
+            else:
+                statusList["status"] = {"percentChange" : "ok"}
         return statusList
     else:
-        return {"status" : "Error: Task not found"}
+        raise HTTPException(status_code=404, detail="Error: Task not found")
     
 class DeleteTask(BaseModel):
     taskName : str
@@ -77,9 +86,12 @@ def deleteTask(uid : str, dataGiven : DeleteTask):
             taskFound = task
             break
     if taskFound:
-        calendar = pcStorage.getCalendar(uid, dataGiven.date[6:])
+        calendar = pcStorage.getCalendar(uid, str(taskFound.getDate().year))
         outcome = main.deleteTask(uid, calendar, taskFound)
-        return {"status" : "ok" if outcome else "Error: Task could not be found in database and/or day"}
+        if outcome:
+            return {"status" : "ok"}
+        else: 
+            raise HTTPException(status_code=404, detail="Error: Task not found in calendar")
 
 # Note: For raw resources, implement CRUD transactions into these areas
 
@@ -95,22 +107,23 @@ class CreateEvent(BaseModel):
 def createEvent(uid : str, dataGiven : CreateEvent):
     calendar = pcStorage.getCalendar(uid, dataGiven.date[6:])
     main.createEvent(uid, dataGiven.name, dataGiven.date, calendar, dataGiven.needsPrep, dataGiven.isImportant)
+    return {"status" : "ok"}
 
-class GetEvent(BaseModel):
-    name : str
 @app.get("/users/{uid}/events")
-def getEvent(uid : str, dataGiven : GetEvent):
+def getEvent(uid : str, name : str):
     events = pcStorage.getEvents(uid)
     for event in events:
-        if event.getName() == dataGiven.name:
+        if event.getName() == name:
             return {"event" : [{
                 "name" : event.getName(),
                 "date" : event.getDate(),
                 "needsPrep" : event.getPrepNeeded(),
                 "importance" : event.getImportance()
             }]}
+    else:
+        raise HTTPException(status_code=404, detail="Error: Task could not be found")
 
-class UpdateEvent:
+class UpdateEvent(BaseModel):
     name : str
     date : str | None = None
     needsPrep : str | None = None
@@ -126,21 +139,30 @@ def updateEvent(uid : str, dataGiven : UpdateEvent):
             break
     if eventFound:
         statusList : dict[str, dict[str]] = {}
-        calendar = pcStorage.getCalendar(uid, dataGiven.date[6:])
+        calendar = pcStorage.getCalendar(uid, str(eventFound.getDate().year))
         if dataGiven.date:
             outcome = main.updateEvent(eventFound, "date", dataGiven.date, uid, calendar)
-            statusList["date"] = {"date" : outcome if type(outcome) == str else "ok"} 
+            if type(outcome) == str:
+                raise HTTPException(status_code=400, detail=outcome)
+            else:
+                statusList["date"] = {"date" : "ok"} 
         if dataGiven.needsPrep:
-            outcome = main.updateEvent(eventFound, "prep", dataGiven.needsPrep, calendar)
-            statusList["prep"] = {"prep" : outcome if type(outcome) == str else "ok"}
+            outcome = main.updateEvent(eventFound, "prep", dataGiven.needsPrep, uid, calendar)
+            if type(outcome) == str:
+                raise HTTPException(status_code=400, detail=outcome)
+            else:
+                statusList["prep"] = {"prep" : "ok"}
         if dataGiven.isImportant:
-            outcome = main.updateEvent(eventFound, "importance", dataGiven.isImportant, )
-            statusList["importance"] = {"importance" : "ok" if outcome else "Error: Failed to update percent of task completed"}
+            outcome = main.updateEvent(eventFound, "importance", dataGiven.isImportant, uid, calendar)
+            if not outcome:
+                raise HTTPException(status_code=400, detail="Error: Failed to update importance of event")
+            else: 
+                statusList["importance"] = {"importance" : "ok"}
         return statusList
     else:
-        return {"status" : "Error: Task not found"}
+        raise HTTPException(status_code=404, detail="Error: Event not found")
     
-class DeleteEvent:
+class DeleteEvent(BaseModel):
     name : str
 @app.delete("/users/{uid}/events")
 def deleteEvent(uid : str, dataGiven : DeleteEvent):
@@ -151,9 +173,12 @@ def deleteEvent(uid : str, dataGiven : DeleteEvent):
             eventFound = event
             break
     if eventFound:
-        calendar = pcStorage.getCalendar(uid, dataGiven.date[6:])
+        calendar = pcStorage.getCalendar(uid, str(eventFound.getDate().year))
         outcome = main.deleteEvent(uid, eventFound, calendar)
-        return {"status" : "ok" if outcome else "Error: Task could not be found in database and/or day"}
+        if not outcome:
+            raise HTTPException(status_code=404, detail="Error: Event could not be found in calendar")
+        else:
+            return {"status" : "ok"}
 
 
 # Section 3: Recommendations
@@ -186,17 +211,16 @@ def sendRecommendations(uid : str):
     }
 
 # Think I just got settings left and that's the framework for APIs done...and backend done as a result
-class GetSetting:
-    field : str
+
 @app.get("/users/{uid}/settings")
-def getSetting(uid : str, dataGiven : GetSetting):
+def getSetting(uid : str, settingField : str):
     settings = pcStorage.getSettings(uid)
-    if dataGiven.field not in settings:
-        return {"status" : "Error: Field requested non-existent"}
+    if settingField not in settings:
+        raise HTTPException(status_code=404, detail="Error: Field requested non-existent")
     else:
-        return settings[dataGiven.field]
+        return settings[settingField]
     
-class updateSetting:
+class updateSetting(BaseModel):
     newDays : list[str] | None = None
     newELimit : int | None = None
     newTLimit : int | None = None

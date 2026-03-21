@@ -98,8 +98,6 @@ def task_recommender(existence : list[Day], today : Day, taskLimit : int = 15):
                         addedTasks+= 1
                     else:
                         break
-                else:
-                    break
             else:
                     break
             
@@ -124,8 +122,6 @@ def event_recommender(altExistence : list[Day], today : Day, eventLimit : int = 
                         dumList.append((compute_event_score(event, today), event))
                     else:
                         break
-                else:
-                    break
             else:
                 break
 
