@@ -54,7 +54,7 @@ def updateTask(uid : str, dataGiven : UpdateTask):
         statusList : dict[str, dict[str]] = {}
         calendar = pcStorage.getCalendar(uid, str(taskFound.getDate().year))
         if dataGiven.date:
-            outcome = main.updateTask(taskFound, "date", dataGiven.date, uid, calendar)
+            outcome = main.updateTask(taskFound, "dueDate", dataGiven.date, uid, calendar)
             if type(outcome) == str:
                 raise HTTPException(status_code=400, detail=outcome)
             else:
@@ -204,7 +204,7 @@ def sendRecommendations(uid : str):
                 "name" : event.getName(),
                 "priority" : event.getImportance(),
                 "date" : event.getDate().isoformat(),
-                "needsPrep" : event.getPrepNeed(),
+                "needsPrep" : event.getPrepNeeded(),
             }
             for event in events
         ]
@@ -242,6 +242,7 @@ def updateSettings(uid : str, dataGiven : updateSetting):
             settings["expired"] = dTime.timedelta(0,0,0,0,0,0,1)
         elif dataGiven.newExpiration == "4":
             settings["expired"] = dTime.timedelta(0,0,0,0,0,0,4)
+    pcStorage.storeSettings(uid, settings)
     return {"status" : "ok"}
 
 

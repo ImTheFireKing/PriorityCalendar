@@ -1,5 +1,6 @@
 from pcClasses import Task, Homework, Major, Quiz, Events, Prep, Day, User
 from datetime import datetime, timedelta
+import datetime as dTime
 import pcStorage
 
 def compute_task_score(task : Task, today : Day):
@@ -35,6 +36,8 @@ def compute_task_score(task : Task, today : Day):
             difMultiplier : int = 2
         elif task.getDifficulty() == "Dead":
             difMultiplier : int = 3
+        else:
+            difMultiplier : int = 1
         if (task.date - today.date >= timedelta(days=21)):
             return 2 * 2 * difMultiplier
         elif (task.date - today.date >= timedelta(days=14)):
@@ -64,7 +67,7 @@ def compute_event_score(event : Events, today : Day):
     else:
         importanceMult = 5
     
-    if event.prepNeeded():
+    if event.getPrepNeeded():
         prepMult = 2
     else:
         prepMult = 1
@@ -132,7 +135,7 @@ def percentCalculate(thatTask : Task, today : Day, existence : list[Day], settin
     '''Calculates the percentage of a task that should be done that day based on the amount of days that are able to be worked on'''
     lazyDays = settings["lazy"]
     startingDay : int
-    startOfYear = datetime.date(today.date.year, 1, 1)
+    startOfYear = dTime.date(today.date.year, 1, 1)
     startingDay = int((today.date - startOfYear).days)
     daysAvailable : int = 0
     for i, day in enumerate(existence):

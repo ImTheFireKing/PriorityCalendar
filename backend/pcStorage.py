@@ -241,7 +241,7 @@ def deleteEvent(uid : str, event : pcClasses.Events):
     
 def addUser(uid : str, userTasks : list[pcClasses.Task], userEvents : list[pcClasses.Events], userSettings : dict):
     # Creation of a User
-    if not usersCollection.find({"uid" : uid}):
+    if not usersCollection.find_one({"uid" : uid}):
         usersCollection.insert_one({"uid" : uid, "tasks" : userTasks, "events" : userEvents, "settings" : userSettings})
         return True
     else:
