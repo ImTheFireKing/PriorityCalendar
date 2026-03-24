@@ -1,0 +1,55 @@
+.about {
+  min-height: 100vh;
+}
+
+.about-content {
+  max-width: 780px;
+  margin: 0 auto; /* Centers the container on the page */
+  padding: 60px 48px 100px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  align-items: center; /* Centers the flex items (like the image wrapper) horizontally */
+  text-align: center; /* Centers the text inside those items */
+}
+
+.about-heading {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(2rem, 4vw, 3rem);
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  line-height: 1.1;
+}
+
+.about-body {
+  font-size: 1rem;
+  line-height: 1.75;
+  color: var(--text-muted);
+  max-width: 680px;
+}
+
+/* We changed the wrapper to a <figure> to be semantically correct, 
+   so we just need to reset its default margins */
+.about-img-wrapper {
+  width: 100%;
+  max-width: 580px;
+  margin: 0; 
+  display: flex;
+  flex-direction: column;
+  gap: 12px; /* Space between image and caption */
+}
+
+.about-img {
+  width: 100%;
+  height: auto; /* Keeps the image from stretching weirdly */
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* Optional: adds a nice subtle drop shadow */
+}
+
+.about-caption {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin: 0;
+}

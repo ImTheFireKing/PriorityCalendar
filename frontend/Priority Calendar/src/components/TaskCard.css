@@ -1,0 +1,64 @@
+.task-card {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  border-left: 6px solid #ccc; /* Default color */
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: transform 0.2s ease;
+}
+
+.task-card:hover {
+  transform: translateY(-2px);
+}
+
+/* Color Coding based on pcClasses task types! */
+.task-card--exam { border-left-color: #ff4757; }     /* Red for Exams */
+.task-card--project { border-left-color: #ff6b81; }  /* Pink/Red for Projects */
+.task-card--quiz { border-left-color: #ffa502; }     /* Orange for Quizzes */
+.task-card--homework { border-left-color: #1e90ff; } /* Blue for Homework */
+.task-card--prep { border-left-color: #2ed573; }     /* Green for Prep */
+.event-card { border-left-color: #9b59b6; }          /* Purple for Events */
+
+.task-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.task-name {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #2b2b2b;
+}
+
+.task-badge {
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: 12px;
+  background: #f1f2f6;
+  color: #57606f;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.rec-action {
+  font-size: 0.95rem;
+  color: #2f3542;
+  background: #f1f8ff;
+  padding: 8px;
+  border-radius: 6px;
+  margin-top: 4px;
+}
+
+.task-special, .event-prep, .due-date {
+  font-size: 0.85rem;
+  color: #747d8c;
+}
+
+.event-prep {
+  color: #ff4757;
+  font-weight: 600;
+}

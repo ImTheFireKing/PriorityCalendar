@@ -4,8 +4,21 @@ from pydantic import BaseModel
 import main
 import pcStorage
 import datetime as dTime
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+origins = [
+    "http://localhost:5173"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 # Section 1: Tasks
 class CreateTask(BaseModel):
     name : str
@@ -123,6 +136,7 @@ def getEvent(uid : str, name : str):
     else:
         raise HTTPException(status_code=404, detail="Error: Task could not be found")
 
+
 class UpdateEvent(BaseModel):
     name : str
     date : str | None = None
@@ -209,6 +223,38 @@ def sendRecommendations(uid : str):
             for event in events
         ]
     }
+
+@app.get("/users/{uid}/schedule/{dateString}")
+def getDailySchedule(uid: str, dateString: str):
+    # Expects dateString in MM-DD-YYYY format
+    year = dateString[6:]
+    calendar = pcStorage.getCalendar(uid, year)
+    
+    # Calculate the index of the day in your calendar list (just like in main.py)
+    target_date = dTime.datetime.strptime(dateString, "%m-%d-%Y").date()
+    start_of_year = dTime.date(int(year), 1, 1)
+    index = (target_date - start_of_year).days
+    
+    target_day = calendar[index]
+    
+    # Return the day's payload
+    return {
+            "tasks": [
+                {
+                    "name": task.getName(),
+                    "type": task.getType(),
+                    "dueDate": task.getDate().isoformat(),
+                } for task in target_day.getTasks() # Updated to match pcClasses!
+            ],
+            "events": [
+                {
+                    "name": event.getName(),
+                    "time": event.getDate().isoformat(),
+                    "importance": event.getImportance()
+                } for event in target_day.getEvents() # Updated to match pcClasses!
+            ]
+        }
+
 
 # Think I just got settings left and that's the framework for APIs done...and backend done as a result
 
