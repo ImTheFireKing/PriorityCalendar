@@ -1,38 +1,57 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import './Nav.css';
-import logo from '../assets/PriorityCalendarSmallLogoTransparent.png'
+import logo from '../assets/PriorityCalendarSmallLogoTransparent.png';
 
-const navConfigs = {
-  '/': [
-    { label: 'About', to: '/about' },
-    { label: 'Changelog', to: '/changelog' },
-    { label: 'Log In', to: '/login', plain: false },
-  ],
-  '/about': [
-    { label: 'Get Started', to: '/' },
-    { label: 'Changelog', to: '/changelog' },
-    { label: 'Log In', to: '/login', plain: false },
-  ],
-  '/changelog': [
-    { label: 'About', to: '/about' },
-    { label: 'Get Started', to: '/' },
-    { label: 'Log In', to: '/login', plain: false },
-  ],
-};
+const DASHBOARD_PATHS = ['/dashboard', '/settings'];
 
-export default function Nav() {
+export default function Nav({ onAuthTrigger }) {
   const location = useLocation();
-  const links = navConfigs[location.pathname] ?? navConfigs['/'];
+  const navigate = useNavigate();
+  const isDashboard = DASHBOARD_PATHS.some(p => location.pathname.startsWith(p));
+
+  const handleLogOut = () => {
+    fetch('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'include',
+    });
+    localStorage.removeItem('pc_uid');
+    navigate('/');
+  };
+
+  if (isDashboard) {
+    return (
+      <nav className="nav">
+        <Link to="/dashboard" className="nav-logo">
+          <img src={logo} alt="Priority Calendar Logo, Small" />
+          Priority Calendar
+        </Link>
+        <div className="nav-links">
+          <a href="/changelog" className="nav-link" target="_blank" rel="noreferrer">
+            Changelog
+          </a>
+          <Link to="/settings" className="nav-link">Settings</Link>
+          <button className="nav-logout" onClick={handleLogOut}>Log Out</button>
+        </div>
+      </nav>
+    );
+  }
 
   return (
     <nav className="nav">
-      <Link to="/" className="nav-logo"> <img src={logo} alt="Priority Calendar Logo, Small"/> Priority Calendar</Link>
+      <Link to="/" className="nav-logo">
+        <img src={logo} alt="Priority Calendar Logo, Small" />
+        Priority Calendar
+      </Link>
       <div className="nav-links">
-        {links.map(({ label, to, plain }) => (
-          <Link key={label} to={to} className={plain ? 'nav-link nav-link--plain' : 'nav-link'}>
-            {label}
-          </Link>
-        ))}
+        <Link to="/about" className="nav-link">About</Link>
+        <a href="/changelog" className="nav-link" target="_blank" rel="noreferrer">
+          Changelog
+        </a>
+        {onAuthTrigger ? (
+          <button className="nav-logout" onClick={onAuthTrigger}>Log In</button>
+        ) : (
+          <Link to="/" className="nav-link">Log In</Link>
+        )}
       </div>
     </nav>
   );

@@ -11,7 +11,7 @@ class Task:
             return Major(taskDate, taskName, alreadyDone, False)
         elif taskType == "quiz":
             return Quiz(taskDate, taskName, alreadyDone)
-        elif taskType == "hw":
+        elif taskType in ("hw", "homework"):
             return Homework(taskDate, taskName, alreadyDone)
         elif taskType == "prep":
             return Prep(taskDate, taskName, alreadyDone)
@@ -306,7 +306,7 @@ class User:
         # For reference, Su, Mo, Tu, Wed, Th, F, Sa
         self.settings["Tlimit"] = 15
         self.settings["Elimit"] = 3
-        self.settings["expired"] = dTime.timedelta(0,0,0,0,0,0,2)
+        self.settings["expired"] = 2
         self.uid = uid
      
 

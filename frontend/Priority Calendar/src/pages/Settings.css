@@ -1,0 +1,151 @@
+.settings-page {
+  min-height: 100vh;
+  background-color: var(--bg);
+  font-family: var(--font-body);
+  padding-bottom: 60px;
+}
+
+.settings-loading {
+  text-align: center;
+  margin-top: 60px;
+  font-family: var(--font-body);
+  color: var(--text-primary);
+  opacity: 0.6;
+}
+
+.settings-main {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 40px 24px;
+}
+
+/* ── Card ── */
+.settings-card {
+  background: var(--peach-light);
+  border-radius: 16px;
+  padding: 36px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.settings-card h2 {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  color: var(--text-primary);
+  margin: 0 0 32px 0;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--peach-mid);
+}
+
+/* ── Sections ── */
+.settings-section {
+  margin-bottom: 32px;
+}
+
+.settings-section h3 {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  color: var(--text-primary);
+  margin: 0 0 4px 0;
+}
+
+.settings-desc {
+  font-size: 0.88rem;
+  color: var(--text-primary);
+  opacity: 0.55;
+  margin: 0 0 14px 0;
+}
+
+/* ── Day toggles ── */
+.day-toggles {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.day-toggle {
+  background: none;
+  border: 1.5px solid var(--text-primary);
+  color: var(--text-primary);
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  opacity: 0.45;
+  transition: opacity 0.15s ease, background 0.15s ease,
+              color 0.15s ease, border-color 0.15s ease;
+}
+
+.day-toggle--active {
+  background: var(--peach-warm);
+  border-color: var(--peach-warm);
+  color: white;
+  opacity: 1;
+}
+
+.day-toggle:hover:not(.day-toggle--active) {
+  background: var(--peach-mid);
+  opacity: 0.9;
+}
+
+/* ── Number inputs ── */
+.settings-row {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.settings-section label {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  gap: 6px;
+}
+
+.settings-section input[type="number"],
+.settings-section select {
+  padding: 8px 12px;
+  border: 1.5px solid var(--peach-warm);
+  border-radius: 10px;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  background: var(--bg);
+  color: var(--text-primary);
+  transition: border-color 0.15s ease;
+}
+
+.settings-section input[type="number"] { width: 100px; }
+.settings-section select               { width: 160px; cursor: pointer; }
+
+.settings-section input[type="number"]:focus,
+.settings-section select:focus {
+  outline: none;
+  border-color: var(--peach-deep);
+}
+
+/* ── Save button ── */
+.settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 24px;
+  border-top: 2px solid var(--peach-mid);
+}
+
+.save-btn {
+  background: none;
+  border: 1.5px solid var(--text-primary);
+  color: var(--text-primary);
+  border-radius: 20px;
+  padding: 8px 28px;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.save-btn:hover { opacity: 0.6; }

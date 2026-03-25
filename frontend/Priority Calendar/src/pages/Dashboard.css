@@ -1,12 +1,25 @@
-/* Dashboard.css */
+/* ── Peach theme tokens (add these to your global :root or index.css) ──
+   If you already have a :root block, just add these variables there.    */
+:root {
+  --peach-light:   #fff0e8;   /* soft warm background tint              */
+  --peach-mid:     #f7c8a8;   /* calendar tile highlights, dividers      */
+  --peach-warm:    #e8956d;   /* active states, section borders          */
+  --peach-deep:    #c9603a;   /* hover accents, strong emphasis          */
+}
 
+/* ═══════════════════════════════════════════
+   PAGE
+═══════════════════════════════════════════ */
 .dashboard-page {
   min-height: 100vh;
-  background-color: #f8f9fa;
-  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--bg);
+  font-family: var(--font-body);
   padding-bottom: 40px;
 }
 
+/* ═══════════════════════════════════════════
+   LAYOUT
+═══════════════════════════════════════════ */
 .dashboard-layout {
   display: flex;
   flex-direction: column;
@@ -16,7 +29,6 @@
   gap: 32px;
 }
 
-/* Desktop layout: Calendar on left, Recs on right */
 @media (min-width: 860px) {
   .dashboard-layout {
     flex-direction: row;
@@ -24,7 +36,9 @@
   }
 }
 
-/* --- LEFT SIDE: Sidebar (Calendar & Agenda) --- */
+/* ═══════════════════════════════════════════
+   LEFT SIDEBAR
+═══════════════════════════════════════════ */
 .dashboard-sidebar {
   flex: 1;
   max-width: 400px;
@@ -33,35 +47,56 @@
   gap: 24px;
 }
 
-/* Customizing the react-calendar to look modern */
+/* Calendar */
 .pc-calendar {
   width: 100%;
-  background: white;
+  background: var(--peach-light);
   border: none;
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   padding: 16px;
-  font-family: inherit;
+  font-family: var(--font-body);
 }
 
+/* Highlight today and selected tiles in peach */
+.pc-calendar .react-calendar__tile--now {
+  background: var(--peach-mid) !important;
+  border-radius: 8px;
+}
+
+.pc-calendar .react-calendar__tile--active {
+  background: var(--peach-warm) !important;
+  color: white !important;
+  border-radius: 8px;
+}
+
+.pc-calendar .react-calendar__tile:hover {
+  background: var(--peach-mid);
+  border-radius: 8px;
+}
+
+/* Daily snapshot panel */
 .daily-snapshot {
-  background: white;
+  background: var(--peach-light);
   border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .daily-snapshot h3 {
   margin-top: 0;
   margin-bottom: 16px;
-  color: #2b2b2b;
-  border-bottom: 2px solid #f1f2f6;
+  font-family: var(--font-display);
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--peach-mid);
   padding-bottom: 8px;
 }
 
 .snapshot-section h4 {
   margin: 0 0 8px 0;
-  color: #57606f;
+  font-family: var(--font-body);
+  color: var(--text-primary);
+  opacity: 0.7;
   font-size: 0.95rem;
 }
 
@@ -72,15 +107,18 @@
 }
 
 .snapshot-section li {
-  background: #f1f2f6;
+  background: var(--peach-mid);
   padding: 8px 12px;
   border-radius: 6px;
   margin-bottom: 8px;
+  font-family: var(--font-body);
   font-size: 0.9rem;
-  color: #2f3542;
+  color: var(--text-primary);
 }
 
-/* --- RIGHT SIDE: Main Content (Recommendations) --- */
+/* ═══════════════════════════════════════════
+   RIGHT MAIN CONTENT
+═══════════════════════════════════════════ */
 .dashboard-main {
   flex: 2;
   display: flex;
@@ -88,41 +126,47 @@
   gap: 24px;
 }
 
+/* Header bar */
 .dashboard-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: white;
+  background: var(--peach-light);
   padding: 20px 24px;
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .dashboard-header h2 {
   margin: 0;
-  color: #2b2b2b;
+  font-family: var(--font-display);
+  color: var(--text-primary);
 }
 
+/* Add Task button — matches Nav logout pill style */
 .add-btn {
-  background-color: #2ed573;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-weight: bold;
+  background: none;
+  border: 1.5px solid var(--text-primary);
+  color: var(--text-primary);
+  border-radius: 20px;
+  padding: 6px 18px;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: opacity 0.15s ease;
 }
 
 .add-btn:hover {
-  background-color: #27ae60;
+  opacity: 0.6;
 }
 
+/* Recommendations hub */
 .recommendations-hub {
-  background: white;
+  background: var(--peach-light);
   border-radius: 12px;
   padding: 24px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -130,7 +174,29 @@
 
 .recommendations-hub h3 {
   margin-top: 0;
-  color: #2b2b2b;
-  border-bottom: 2px solid #f1f2f6;
+  font-family: var(--font-display);
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--peach-mid);
   padding-bottom: 12px;
+}
+
+
+/* Lazy day tiles — muted peach + italic to visually distinguish */
+.pc-calendar .lazy-day {
+  background: var(--peach-mid) !important;
+  border-radius: 8px;
+  font-style: italic;
+  opacity: 0.75;
+}
+
+.pc-calendar .lazy-day:hover {
+  background: var(--peach-warm) !important;
+  opacity: 1;
+  color: white;
+}
+
+/* If a lazy day is also "today", layer both styles */
+.pc-calendar .react-calendar__tile--now.lazy-day {
+  background: var(--peach-warm) !important;
+  opacity: 0.85;
 }

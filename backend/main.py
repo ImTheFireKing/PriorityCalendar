@@ -15,8 +15,9 @@ def checkTasks(uid : str, calendar : list[pcClasses.Day]):
     """Checks all tasks to ensure that both due dates aren't passed (give a two week-ish grace period by default...OR WE COULD USE SETTINGS) and that percentages aren't at/above 100; In theory, 100 percent should be the only check, but :shrug:"""
     allTasks = pcStorage.getTasks(uid)
     settings = pcStorage.getSettings(uid)
+    expiry = dTime.timedelta(0,0,0,0,0,0,settings['expired'])
     for task in allTasks:
-        if task.getPercent() >= 100 or (dTime.datetime.today().date() - task.getDate() > settings["expired"]):
+        if task.getPercent() >= 100 or (dTime.datetime.today().date() - task.getDate() > expiry):
             deleteTask(uid, calendar, task)
 
 def taskComplete(uid : str, task : pcClasses.Task, percentDone : float):
@@ -42,7 +43,7 @@ def getRecommendationsForToday(uid : str):
     calendar = pcStorage.getCalendar(uid, str(datetime.now().year))
     today = pcClasses.Day(datetime.today().date())
     if settings:
-        toDo : list[(int, pcClasses.Task)] = recommender.task_recommender(calendar, today, settings["Tlimit"])
+        toDo : list[(int, pcClasses.Task)] = recommender.task_recommender(calendar, today, settings, settings["Tlimit"])
         events : list[(int, pcClasses.Events)] = recommender.event_recommender(calendar, today, settings["Elimit"])
     else:
         toDo : list[(int, pcClasses.Task)] = recommender.task_recommender(calendar, today)
