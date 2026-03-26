@@ -1,12 +1,21 @@
-import TaskCard from './components/TaskCard'
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Landing from './pages/Landing';
+import About from './pages/About';
+import Changelog from './pages/Changelog';
+import './index.css';
+import Dashboard from './pages/Dashboard';
+import Settings from './pages/Settings';
 
-function App() {
+export default function App() {
   return (
-    <div>
-      <h1>Priority Calendar</h1>
-      <TaskCard name="Getting Work Done" taskType="Homework" dueDate="11-15-2026" howMuch={30} />
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/changelog" element={<Changelog />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/settings" element={<Settings />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
-
-export default App;

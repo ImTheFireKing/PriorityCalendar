@@ -1,5 +1,6 @@
 from pcClasses import Task, Homework, Major, Quiz, Events, Prep, Day, User
 from datetime import datetime, timedelta
+import datetime as dTime
 import pcStorage
 
 def compute_task_score(task : Task, today : Day):
@@ -35,6 +36,8 @@ def compute_task_score(task : Task, today : Day):
             difMultiplier : int = 2
         elif task.getDifficulty() == "Dead":
             difMultiplier : int = 3
+        else:
+            difMultiplier : int = 1
         if (task.date - today.date >= timedelta(days=21)):
             return 2 * 2 * difMultiplier
         elif (task.date - today.date >= timedelta(days=14)):
@@ -64,7 +67,7 @@ def compute_event_score(event : Events, today : Day):
     else:
         importanceMult = 5
     
-    if event.prepNeeded():
+    if event.getPrepNeeded():
         prepMult = 2
     else:
         prepMult = 1
@@ -78,7 +81,7 @@ def compute_event_score(event : Events, today : Day):
     else:
         return importanceMult * prepMult * 4
 
-def task_recommender(existence : list[Day], today : Day, taskLimit : int = 15):
+def task_recommender(existence : list[Day], today : Day, settings = {"lazy" : []}, taskLimit : int = 15):
     # Assume that there's a normal person limit of 15 tasks per day
     if taskLimit == 0:
     # If the user asks for infinite tasks, calculate task score for all tasks
@@ -95,7 +98,8 @@ def task_recommender(existence : list[Day], today : Day, taskLimit : int = 15):
                 for task in day.tasks:  
                     if (addedTasks < taskLimit):
                         dumList.append((compute_task_score(task, today), task))
-                        addedTasks+= 1
+                        if (percentCalculate(task, today, existence, settings) < 70): 
+                            addedTasks+= 1
                     else:
                         break
             else:
@@ -132,7 +136,7 @@ def percentCalculate(thatTask : Task, today : Day, existence : list[Day], settin
     '''Calculates the percentage of a task that should be done that day based on the amount of days that are able to be worked on'''
     lazyDays = settings["lazy"]
     startingDay : int
-    startOfYear = datetime.date(today.date.year, 1, 1)
+    startOfYear = dTime.date(today.date.year, 1, 1)
     startingDay = int((today.date - startOfYear).days)
     daysAvailable : int = 0
     for i, day in enumerate(existence):
@@ -147,6 +151,6 @@ def percentCalculate(thatTask : Task, today : Day, existence : list[Day], settin
     if (daysAvailable == 0):
         return "You're cooked"
     # Note to self: Fix this later
-    return max(round(100-thatTask.getPercent()/daysAvailable, 2), 1)
+    return max(round((100-thatTask.getPercent())/daysAvailable, 2), 1)
 
 

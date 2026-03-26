@@ -15,8 +15,9 @@ def checkTasks(uid : str, calendar : list[pcClasses.Day]):
     """Checks all tasks to ensure that both due dates aren't passed (give a two week-ish grace period by default...OR WE COULD USE SETTINGS) and that percentages aren't at/above 100; In theory, 100 percent should be the only check, but :shrug:"""
     allTasks = pcStorage.getTasks(uid)
     settings = pcStorage.getSettings(uid)
+    expiry = dTime.timedelta(0,0,0,0,0,0,settings['expired'])
     for task in allTasks:
-        if task.getPercent() >= 100 or (dTime.datetime.today().date() - task.getDate() > settings["expired"]):
+        if task.getPercent() >= 100 or (dTime.datetime.today().date() - task.getDate() > expiry):
             deleteTask(uid, calendar, task)
 
 def taskComplete(uid : str, task : pcClasses.Task, percentDone : float):
@@ -40,16 +41,16 @@ def getThingsForDay(uid : str, day : pcClasses.Day):
 def getRecommendationsForToday(uid : str):
     settings = pcStorage.getSettings(uid)
     calendar = pcStorage.getCalendar(uid, str(datetime.now().year))
-    if settings:
-        toDo : list[(int, pcClasses.Task)] = recommender.task_recommender(calendar, datetime.now().year, settings["Tlimit"])
-        events : list[(int, pcClasses.Events)] = recommender.event_recommender(calendar, datetime.now().year, settings["Elimit"])
-    else:
-        toDo : list[(int, pcClasses.Task)] = recommender.task_recommender(calendar, datetime.now().year)
-        events : list[(int, pcClasses.Events)] = recommender.event_recommender(calendar, datetime.now().year)
-    percentages : list[float] = []
     today = pcClasses.Day(datetime.today().date())
+    if settings:
+        toDo : list[(int, pcClasses.Task)] = recommender.task_recommender(calendar, today, settings, settings["Tlimit"])
+        events : list[(int, pcClasses.Events)] = recommender.event_recommender(calendar, today, settings["Elimit"])
+    else:
+        toDo : list[(int, pcClasses.Task)] = recommender.task_recommender(calendar, today)
+        events : list[(int, pcClasses.Events)] = recommender.event_recommender(calendar, today)
+    percentages : list[float] = []
     for i in range(len(toDo)):
-        percentages.append(recommender.percentCalculate(toDo[i][1], today, calendar))
+        percentages.append(recommender.percentCalculate(toDo[i][1], today, calendar, settings))
     forToday : dict = {"tasks" : toDo, "events" : events, "howMuch" : percentages}
     return forToday
 
@@ -97,7 +98,7 @@ def createEvent(uid : str, eventName : str, eventDate : str, existence : list[pc
 def checkEvents(uid : str, calendar : list[pcClasses.Day]):
     events = pcStorage.getEvents(uid)
     for event in events:
-        if event.getDate() - datetime.today().date() < 0:
+        if event.getDate() - datetime.today().date() < dTime.timedelta(0):
             deleteEvent(uid, event, calendar)
 def deleteEvent(uid : str, event : pcClasses.Events, calendar : list[pcClasses.Day]):
     """Any event should only be deleted given the following circumstances: the event has already passed or the user has requested to delete the event"""

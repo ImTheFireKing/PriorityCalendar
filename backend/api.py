@@ -4,8 +4,26 @@ from pydantic import BaseModel
 import main
 import pcStorage
 import datetime as dTime
+from datetime import datetime
+from fastapi.middleware.cors import CORSMiddleware
+from auth import router as authRouter
+from auth import get_current_uid
+from fastapi import Depends
 
 app = FastAPI()
+app.include_router(authRouter)
+
+origins = [
+    "http://localhost:5173"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 # Section 1: Tasks
 class CreateTask(BaseModel):
     name : str
@@ -14,7 +32,9 @@ class CreateTask(BaseModel):
     special : str | None = None
     alreadyDone : float = 0.0
 @app.post("/users/{uid}/tasks")
-def createTask(uid : str, dataGiven : CreateTask):
+def createTask(uid : str, dataGiven : CreateTask, currentUid : str = Depends(get_current_uid)):
+    if uid != currentUid:
+        raise HTTPException(status_code=403, details="Forbidden Resources")
     # MM-DD-YYYY
     calendar = pcStorage.getCalendar(uid, dataGiven.date[6:])
     newTask = main.createTask(uid, dataGiven.name, dataGiven.date, dataGiven.taskType, calendar, dataGiven.alreadyDone)
@@ -23,7 +43,9 @@ def createTask(uid : str, dataGiven : CreateTask):
     return {"status" : "ok"}
 
 @app.get("/users/{uid}/tasks")
-def getTask(uid : str, taskName : str):
+def getTask(uid : str, taskName : str, currentUid : str = Depends(get_current_uid)):
+    if uid != currentUid:
+        raise HTTPException(status_code=403, detail="Forbidden Resources")
     tasks = pcStorage.getTasks(uid)
     for task in tasks:
         if task.getName() == taskName:
@@ -42,8 +64,10 @@ class UpdateTask(BaseModel):
     special : str | None = None
     percentChange : float | None = None
 @app.patch("/users/{uid}/tasks")
-def updateTask(uid : str, dataGiven : UpdateTask):
+def updateTask(uid : str, dataGiven : UpdateTask, currentUid : str = Depends(get_current_uid)):
     #MM-DD-YYYY
+    if uid != currentUid:
+        raise HTTPException(status_code=403, detail="Forbidden Resources")
     tasks = pcStorage.getTasks(uid)
     taskFound = None
     for task in tasks:
@@ -54,7 +78,7 @@ def updateTask(uid : str, dataGiven : UpdateTask):
         statusList : dict[str, dict[str]] = {}
         calendar = pcStorage.getCalendar(uid, str(taskFound.getDate().year))
         if dataGiven.date:
-            outcome = main.updateTask(taskFound, "date", dataGiven.date, uid, calendar)
+            outcome = main.updateTask(taskFound, "dueDate", dataGiven.date, uid, calendar)
             if type(outcome) == str:
                 raise HTTPException(status_code=400, detail=outcome)
             else:
@@ -71,6 +95,8 @@ def updateTask(uid : str, dataGiven : UpdateTask):
                 raise HTTPException(status_code=404, detail="Error: Failed to update percent of task completed")
             else:
                 statusList["status"] = {"percentChange" : "ok"}
+                main.checkTasks(uid, calendar)
+
         return statusList
     else:
         raise HTTPException(status_code=404, detail="Error: Task not found")
@@ -78,7 +104,9 @@ def updateTask(uid : str, dataGiven : UpdateTask):
 class DeleteTask(BaseModel):
     taskName : str
 @app.delete("/users/{uid}/tasks")
-def deleteTask(uid : str, dataGiven : DeleteTask):
+def deleteTask(uid : str, dataGiven : DeleteTask, currentUid : str = Depends(get_current_uid)):
+    if uid != currentUid:
+        raise HTTPException(status_code=403, detail="Forbidden Resources")
     tasks = pcStorage.getTasks(uid)
     taskFound = None
     for task in tasks:
@@ -104,13 +132,17 @@ class CreateEvent(BaseModel):
     isImportant : bool  = False
         
 @app.post("/users/{uid}/events")
-def createEvent(uid : str, dataGiven : CreateEvent):
+def createEvent(uid : str, dataGiven : CreateEvent, currentUid : str = Depends(get_current_uid)):
+    if uid != currentUid:
+        raise HTTPException(status_code=403, detail="Forbidden Resources")
     calendar = pcStorage.getCalendar(uid, dataGiven.date[6:])
     main.createEvent(uid, dataGiven.name, dataGiven.date, calendar, dataGiven.needsPrep, dataGiven.isImportant)
     return {"status" : "ok"}
 
 @app.get("/users/{uid}/events")
-def getEvent(uid : str, name : str):
+def getEvent(uid : str, name : str, currentUid : str = Depends(get_current_uid)):
+    if uid != currentUid:
+        raise HTTPException(status_code=403, detail="Forbidden Resources")
     events = pcStorage.getEvents(uid)
     for event in events:
         if event.getName() == name:
@@ -123,14 +155,17 @@ def getEvent(uid : str, name : str):
     else:
         raise HTTPException(status_code=404, detail="Error: Task could not be found")
 
+
 class UpdateEvent(BaseModel):
     name : str
     date : str | None = None
     needsPrep : str | None = None
     isImportant : str | None = None
 @app.patch("/users/{uid}/events")    
-def updateEvent(uid : str, dataGiven : UpdateEvent):
+def updateEvent(uid : str, dataGiven : UpdateEvent, currentUid : str = Depends(get_current_uid)):
     #MM-DD-YYYY
+    if uid != currentUid:
+        raise HTTPException(status_code=403, detail="Forbidden Resources")
     events = pcStorage.getEvents(uid)
     eventFound = None
     for event in events:
@@ -158,6 +193,7 @@ def updateEvent(uid : str, dataGiven : UpdateEvent):
                 raise HTTPException(status_code=400, detail="Error: Failed to update importance of event")
             else: 
                 statusList["importance"] = {"importance" : "ok"}
+        main.checkEvents()
         return statusList
     else:
         raise HTTPException(status_code=404, detail="Error: Event not found")
@@ -165,7 +201,9 @@ def updateEvent(uid : str, dataGiven : UpdateEvent):
 class DeleteEvent(BaseModel):
     name : str
 @app.delete("/users/{uid}/events")
-def deleteEvent(uid : str, dataGiven : DeleteEvent):
+def deleteEvent(uid : str, dataGiven : DeleteEvent, currentUid : str = Depends(get_current_uid)):
+    if uid != currentUid:
+        raise HTTPException(status_code=403, detail="Forbidden Resources")
     events = pcStorage.getEvents(uid)
     eventFound = None
     for event in events:
@@ -183,7 +221,12 @@ def deleteEvent(uid : str, dataGiven : DeleteEvent):
 
 # Section 3: Recommendations
 @app.get("/users/{uid}/recommendations")
-def sendRecommendations(uid : str):
+def sendRecommendations(uid : str, currentUid : str = Depends(get_current_uid)):
+    if uid != currentUid:
+        raise HTTPException(status_code=403, detail="Forbidden Resources")
+    calendar = pcStorage.getCalendar(uid, str(datetime.now().year))
+    main.checkTasks(uid, calendar)
+    main.checkEvents(uid, calendar)
     recommendations = main.getRecommendationsForToday(uid)
     tasks = recommendations["tasks"]
     events = recommendations["events"]
@@ -204,16 +247,52 @@ def sendRecommendations(uid : str):
                 "name" : event.getName(),
                 "priority" : event.getImportance(),
                 "date" : event.getDate().isoformat(),
-                "needsPrep" : event.getPrepNeed(),
+                "needsPrep" : event.getPrepNeeded(),
             }
             for event in events
         ]
     }
 
+@app.get("/users/{uid}/schedule/{dateString}")
+def getDailySchedule(uid : str, dateString: str, currentUid : str = Depends(get_current_uid)):
+    # Expects dateString in MM-DD-YYYY format
+    if uid != currentUid:
+        raise HTTPException(status_code=403, detail="Forbidden Resources")
+    year = dateString[6:]
+    calendar = pcStorage.getCalendar(uid, year)
+    
+    # Calculate the index of the day in your calendar list (just like in main.py)
+    target_date = dTime.datetime.strptime(dateString, "%m-%d-%Y").date()
+    start_of_year = dTime.date(int(year), 1, 1)
+    index = (target_date - start_of_year).days
+    
+    target_day = calendar[index]
+    
+    # Return the day's payload
+    return {
+            "tasks": [
+                {
+                    "name": task.getName(),
+                    "type": task.getType(),
+                    "dueDate": task.getDate().isoformat(),
+                } for task in target_day.getTasks() # Updated to match pcClasses!
+            ],
+            "events": [
+                {
+                    "name": event.getName(),
+                    "time": event.getDate().isoformat(),
+                    "importance": event.getImportance()
+                } for event in target_day.getEvents() # Updated to match pcClasses!
+            ]
+        }
+
+
 # Think I just got settings left and that's the framework for APIs done...and backend done as a result
 
 @app.get("/users/{uid}/settings")
-def getSetting(uid : str, settingField : str):
+def getSetting(uid : str, settingField : str, currentUid : str = Depends(get_current_uid)):
+    if uid != currentUid:
+        raise HTTPException(status_code=403, detail="Forbidden Resources")
     settings = pcStorage.getSettings(uid)
     if settingField not in settings:
         raise HTTPException(status_code=404, detail="Error: Field requested non-existent")
@@ -227,7 +306,9 @@ class updateSetting(BaseModel):
     # By default, keep expiration date at two weeks; Else, allow changes to preset values (2 weeks, 1 week, 4 weeks)
     newExpiration : str | None = None
 @app.patch("/users/{uid}/settings")
-def updateSettings(uid : str, dataGiven : updateSetting):
+def updateSettings(uid : str, dataGiven : updateSetting, currentUid : str = Depends(get_current_uid)):
+    if uid != currentUid:
+        raise HTTPException(status_code=403, detail="Forbidden Resources")
     settings = pcStorage.getSettings(uid)
     if dataGiven.newDays:
         settings["lazy"] = dataGiven.newDays
@@ -235,13 +316,9 @@ def updateSettings(uid : str, dataGiven : updateSetting):
         settings["Elimit"] = dataGiven.newELimit
     if dataGiven.newTLimit:
         settings["Tlimit"] = dataGiven.newTLimit
-    if dataGiven.newExpiration:
-        if dataGiven.newExpiration == "2":
-            settings["expired"] = dTime.timedelta(0,0,0,0,0,0,2)
-        elif dataGiven.newExpiration == "1":
-            settings["expired"] = dTime.timedelta(0,0,0,0,0,0,1)
-        elif dataGiven.newExpiration == "4":
-            settings["expired"] = dTime.timedelta(0,0,0,0,0,0,4)
+    if dataGiven.newExpiration in ("1", "2", "4"):
+        settings["expired"] = int(dataGiven.newExpiration)
+    pcStorage.storeSettings(uid, settings)
     return {"status" : "ok"}
 
 
