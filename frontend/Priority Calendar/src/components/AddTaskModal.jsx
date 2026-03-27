@@ -32,50 +32,59 @@ export default function AddTaskModal({ isOpen, onClose, uid, onTaskAdded }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Convert YYYY-MM-DD → MM-DD-YYYY for pcClasses string slicing
     const [year, month, day] = date.split('-');
     const formattedDate = `${month}-${day}-${year}`;
 
+    // ── Duplicate check ───────────────────────────────────────────────────────
+    const endpoint = taskType === 'event'
+      ? `/api/users/${uid}/events?name=${encodeURIComponent(name)}`
+      : `/api/users/${uid}/tasks?taskName=${encodeURIComponent(name)}`;
+
+    try {
+      const checkRes = await fetch(endpoint, { credentials: 'include' });
+      if (checkRes.ok) {
+        alert(`A ${taskType === 'event' ? 'event' : 'task'} named "${name}" already exists.`);
+        return;
+      }
+      // 404 = doesn't exist = safe to proceed
+    } catch {
+      // network error — let it fall through to the creation attempt
+    }
+    // ── Creation ──────────────────────────────────────────────────────────────
+
     if (taskType === 'event') {
-      // Events go to their own endpoint with their own shape
       const payload = { name, date: formattedDate, isImportant, needsPrep };
       try {
         const response = await fetch(`/api/users/${uid}/events`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
-          credentials: "include",
+          credentials: 'include',
         });
         if (!response.ok) {
           const err = await response.json();
-          console.error('Event creation failed:', err);
+          console.error('Event creation failed', err);
           return;
         }
         onTaskAdded();
         handleClose();
       } catch (error) {
-        console.error('Submission error:', error);
+        console.error('Submission error', error);
       }
       return;
     }
 
-    // For all task types: homework, exam, project, quiz, prep
-    // Determine what 'special' means for each type
+    // All task types
     let special = null;
-    if (taskType === 'homework') {
-      special = difficultyMapper[difficulty] ?? 'Easy'; // 'Ehhh', 'Dead', or 'Easy'
-    } else if (taskType === 'exam') {
-      special = difficulty; // 'regular', 'midterm', 'final'
-    } else if (taskType === 'project') {
-      special = String(isCollaborative); // 'true' or 'false'
-    }
-    // quiz and prep have no special field — leave null
+    if (taskType === 'homework')    special = difficultyMapper[difficulty] ?? 'Easy';
+    else if (taskType === 'exam')   special = difficulty;
+    else if (taskType === 'project') special = String(isCollaborative);
 
     const payload = {
       name,
       date: formattedDate,
-      taskType,           // matches CreateTask.taskType in api.py
-      alreadyDone: 0.0,   // matches CreateTask.alreadyDone in api.py
+      taskType,
+      alreadyDone: 0.0,
       ...(special !== null && { special }),
     };
 
@@ -84,17 +93,17 @@ export default function AddTaskModal({ isOpen, onClose, uid, onTaskAdded }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-        credentials: "include",
+        credentials: 'include',
       });
       if (!response.ok) {
         const err = await response.json();
-        console.error('Task creation failed:', err);
+        console.error('Task creation failed', err);
         return;
       }
       onTaskAdded();
       handleClose();
     } catch (error) {
-      console.error('Submission error:', error);
+      console.error('Submission error', error);
     }
   };
 
@@ -155,7 +164,7 @@ export default function AddTaskModal({ isOpen, onClose, uid, onTaskAdded }) {
               <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
                 <option value="Regular">Regular</option>
                 <option value="Midterm">Midterm</option>
-                <option value="final">Final</option>
+                <option value="Final">Final</option>
               </select>
             </label>
           )}

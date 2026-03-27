@@ -46,7 +46,7 @@ def googleAuth(body : GoogleTokenBody, response : Response):
     # Creates uses in Mongo if not there, grabs from Mongo otherwise
     existing = pcStorage.getUser(googleUID)
     if not existing:
-        pcStorage.addUser(googleUID, [], [], {"lazy" : [], "Tlimit" : 15, "Elimit" : 3, "expired" : 2})
+        pcStorage.addUser(googleUID, {"lazy": [], "Tlimit": 15, "Elimit": 3, "expired": 2})
 
     sessionToken = createSessionToken(googleUID)
     response.set_cookie(

@@ -200,3 +200,35 @@
   background: var(--peach-warm) !important;
   opacity: 0.85;
 }
+
+.refresh-indicator {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--peach-warm);
+  animation: shimmer 1s ease-in-out infinite;
+  z-index: 999;
+}
+
+@keyframes shimmer {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+.get-more-btn {
+  margin-top: 12px;
+  width: 100%;
+  padding: 10px;
+  background: transparent;
+  border: 1.5px dashed var(--peach-mid);
+  border-radius: 10px;
+  color: var(--peach-warm);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.get-more-btn:hover {
+  background: var(--peach-mid);
+  color: var(--bg);
+}

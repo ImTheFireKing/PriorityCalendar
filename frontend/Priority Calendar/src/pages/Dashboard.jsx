@@ -10,26 +10,28 @@ import './Dashboard.css';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const checkSession = async () => {
-  const res = await fetch('/api/auth/session', {
-    credentials: 'include',
-  });
-  return res.ok;
-  };
   const uid = localStorage.getItem('pc_uid');
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [schedule, setSchedule]         = useState({ tasks: [], events: [] });
-  const [recs, setRecs]                 = useState({ tasks: [], events: [] });
-  const [lazyDays, setLazyDays]         = useState([]);
-  const [loading, setLoading]           = useState(true);
-  const [isModalOpen, setIsModalOpen]   = useState(false);
 
-  const apiUrl   = '/api'; // Change in Production to where API code will be hosted
+  const [selectedDate, setSelectedDate]   = useState(new Date());
+  const [schedule, setSchedule]           = useState({ tasks: [], events: [] });
+  const [recs, setRecs]                   = useState({ tasks: [], events: [] });
+  const [lazyDays, setLazyDays]           = useState([]);
+  const [initialLoad, setInitialLoad]     = useState(true);
+  const [refreshing, setRefreshing]       = useState(false);
+  const [isModalOpen, setIsModalOpen]     = useState(false);
+  const [noMoreRecs, setNoMoreRecs]       = useState(false);
+  const [hadTasksOnLoad, setHadTasksOnLoad] = useState(false);
+
+  const apiUrl    = '/api';
   const DAY_TO_JS = { Su: 0, Mo: 1, Tu: 2, Wed: 3, Th: 4, F: 5, Sa: 6 };
 
   const fetchDashboardData = useCallback(async () => {
     if (!uid) return;
-    setLoading(true);
+
+    if (initialLoad) setRefreshing(false);
+    else             setRefreshing(true);
+
+    setNoMoreRecs(false);
 
     const formatForBackend = (dateObj) => {
       const m = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -57,20 +59,50 @@ export default function Dashboard() {
         setSchedule(schedData);
       }
 
-      const recsRes  = await fetch(`${apiUrl}/users/${uid}/recommendations`, {
-        credentials: 'include',
-      });
-      if (recsRes.ok) {
-        const recsData = await recsRes.json();
-        setRecs(recsData);
-      }
+      const recsRes = await fetch(`${apiUrl}/users/${uid}/recommendations`, {
+      credentials: 'include',
+    });
+    if (recsRes.ok) {
+      const recsData = await recsRes.json();
+      setRecs(recsData);
+      setHadTasksOnLoad(recsData.tasks.length > 0);  // Set once per refresh
+    }
     } catch (error) {
       console.error('Failed to fetch data:', error);
     }
 
-    // Fade splash out, then unmount
-    setTimeout(() => setLoading(false), 400);
-  }, [selectedDate, uid]);
+    setTimeout(() => {
+      setInitialLoad(false);
+      setRefreshing(false);
+    }, 400);
+  }, [selectedDate, uid, initialLoad]);
+
+  const fetchMoreRecs = async () => {
+    try {
+      const res = await fetch(`${apiUrl}/users/${uid}/recommendations`, {
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+
+        const existingNames  = new Set(recs.tasks.map(t => t.name));
+        const existingEvents = new Set(recs.events.map(e => e.name));
+        const newTasks       = data.tasks.filter(t => !existingNames.has(t.name));
+        const newEvents      = data.events.filter(e => !existingEvents.has(e.name));
+
+        if (newTasks.length === 0 && newEvents.length === 0) {
+          setNoMoreRecs(true);
+        } else {
+          setRecs(prev => ({
+            tasks:  [...prev.tasks,  ...newTasks],
+            events: [...prev.events, ...newEvents],
+          }));
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch more recs:', err);
+    }
+  };
 
   useEffect(() => {
     if (!uid) { navigate('/login'); return; }
@@ -81,12 +113,13 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard-page">
-
-      {loading ? (
+      {initialLoad ? (
         <SplashScreen />
       ) : (
         <>
           <Nav />
+          {refreshing && <div className="refresh-indicator" />}
+
           <main className="dashboard-layout">
 
             {/* LEFT COLUMN */}
@@ -132,15 +165,35 @@ export default function Dashboard() {
                 {[...recs.tasks]
                   .sort((a, b) => (b.howMuch ?? 0) - (a.howMuch ?? 0))
                   .map((task, index) => (
-                    <TaskCard key={`rec-task-${index}`} data={task} isRec={true} />
+                    <TaskCard
+                      key={`rec-task-${index}`}
+                      data={task}
+                      isRec={true}
+                      uid={uid}
+                      onRefresh={fetchDashboardData}
+                    />
                   ))
                 }
 
                 {recs.events.map((event, index) => (
-                  <TaskCard key={`rec-event-${index}`} data={event} isRec={true} />
+                  <TaskCard
+                    key={`rec-event-${index}`}
+                    data={event}
+                    isRec={true}
+                    uid={uid}
+                    onRefresh={fetchDashboardData}
+                  />
                 ))}
 
-                {recs.tasks.length === 0 && recs.events.length === 0 && (
+                {/* Batch cleared — offer more */}
+                {recs.tasks.length === 0 && hadTasksOnLoad && !noMoreRecs && (
+                  <button className="get-more-btn" onClick={fetchMoreRecs}>
+                    + Get More
+                  </button>
+                )}
+
+                {/* Nothing left at all */}
+                {recs.tasks.length === 0 && (!hadTasksOnLoad || noMoreRecs) && (
                   <p>You're all caught up! Go take a nap.</p>
                 )}
               </div>
@@ -156,7 +209,6 @@ export default function Dashboard() {
           />
         </>
       )}
-
     </div>
   );
 }

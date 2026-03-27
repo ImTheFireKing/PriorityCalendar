@@ -55,9 +55,11 @@ def getTask(uid : str, taskName : str, currentUid : str = Depends(get_current_ui
                 "type" : task.getType(),
                 "dueDate" : task.getDate().isoformat(),
                 "otherDetails" : task.getSpecial()
+                
             }]}
     else:
         raise HTTPException(status_code=404, detail="Error: Task could not be found")
+
 class UpdateTask(BaseModel):
     taskName : str
     date : str | None = None
@@ -96,7 +98,6 @@ def updateTask(uid : str, dataGiven : UpdateTask, currentUid : str = Depends(get
             else:
                 statusList["status"] = {"percentChange" : "ok"}
                 main.checkTasks(uid, calendar)
-
         return statusList
     else:
         raise HTTPException(status_code=404, detail="Error: Task not found")
@@ -193,7 +194,7 @@ def updateEvent(uid : str, dataGiven : UpdateEvent, currentUid : str = Depends(g
                 raise HTTPException(status_code=400, detail="Error: Failed to update importance of event")
             else: 
                 statusList["importance"] = {"importance" : "ok"}
-        main.checkEvents()
+        main.checkEvents(uid, calendar)
         return statusList
     else:
         raise HTTPException(status_code=404, detail="Error: Event not found")
@@ -238,9 +239,10 @@ def sendRecommendations(uid : str, currentUid : str = Depends(get_current_uid)):
                 "type" : task.getType(),
                 "dueDate" : task.getDate().isoformat(),
                 "howMuch" : percent,
-                "otherDetails" : task.getSpecial()
+                "otherDetails" : task.getSpecial(),     
+                "forced" : forced                # True = bypassed task limit due to high workload today
             }
-            for (score, task), percent in zip(tasks, percentages)
+            for (score, task, forced), percent in zip(tasks, percentages)
         ],
         "events" : [
             {
@@ -249,7 +251,7 @@ def sendRecommendations(uid : str, currentUid : str = Depends(get_current_uid)):
                 "date" : event.getDate().isoformat(),
                 "needsPrep" : event.getPrepNeeded(),
             }
-            for event in events
+            for (score, event) in events
         ]
     }
 
@@ -261,33 +263,29 @@ def getDailySchedule(uid : str, dateString: str, currentUid : str = Depends(get_
     year = dateString[6:]
     calendar = pcStorage.getCalendar(uid, year)
     
-    # Calculate the index of the day in your calendar list (just like in main.py)
     target_date = dTime.datetime.strptime(dateString, "%m-%d-%Y").date()
     start_of_year = dTime.date(int(year), 1, 1)
     index = (target_date - start_of_year).days
     
     target_day = calendar[index]
     
-    # Return the day's payload
     return {
             "tasks": [
                 {
                     "name": task.getName(),
                     "type": task.getType(),
                     "dueDate": task.getDate().isoformat(),
-                } for task in target_day.getTasks() # Updated to match pcClasses!
+                } for task in target_day.getTasks()
             ],
             "events": [
                 {
                     "name": event.getName(),
                     "time": event.getDate().isoformat(),
                     "importance": event.getImportance()
-                } for event in target_day.getEvents() # Updated to match pcClasses!
+                } for event in target_day.getEvents()
             ]
         }
 
-
-# Think I just got settings left and that's the framework for APIs done...and backend done as a result
 
 @app.get("/users/{uid}/settings")
 def getSetting(uid : str, settingField : str, currentUid : str = Depends(get_current_uid)):
@@ -303,7 +301,6 @@ class updateSetting(BaseModel):
     newDays : list[str] | None = None
     newELimit : int | None = None
     newTLimit : int | None = None
-    # By default, keep expiration date at two weeks; Else, allow changes to preset values (2 weeks, 1 week, 4 weeks)
     newExpiration : str | None = None
 @app.patch("/users/{uid}/settings")
 def updateSettings(uid : str, dataGiven : updateSetting, currentUid : str = Depends(get_current_uid)):
@@ -320,5 +317,3 @@ def updateSettings(uid : str, dataGiven : updateSetting, currentUid : str = Depe
         settings["expired"] = int(dataGiven.newExpiration)
     pcStorage.storeSettings(uid, settings)
     return {"status" : "ok"}
-
-

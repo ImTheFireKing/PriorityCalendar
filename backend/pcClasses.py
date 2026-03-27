@@ -15,12 +15,23 @@ class Task:
             return Homework(taskDate, taskName, alreadyDone)
         elif taskType == "prep":
             return Prep(taskDate, taskName, alreadyDone)
+
     @staticmethod
     def fromDict(taskPackage : dict):
         taskType = taskPackage["type"]
         taskDate = taskPackage["date"]
         taskName = taskPackage["name"]
         taskPercentDone = taskPackage["percentDone"]
+        # lastWorked may not exist on older documents — default to None
+        rawLastWorked = taskPackage.get("lastWorked", None)
+        if rawLastWorked:
+            try:
+                lastWorked = dTime.datetime.strptime(rawLastWorked, '%m-%d-%Y').date()
+            except ValueError:
+                lastWorked = None  # fallback for any legacy YYYY-MM-DD values
+        else:
+            lastWorked = None
+            
         if taskType == "exam":
             constructedTask = Major(taskDate, taskName, taskPercentDone, True)
             constructedTask.setExamDifficulty(taskPackage["difficulty"])
@@ -31,23 +42,32 @@ class Task:
             constructedTask = Homework(taskDate, taskName, taskPercentDone, taskPackage["difficulty"])
         else:
             constructedTask = Task.deepConstructor(taskType, taskDate, taskName, taskPercentDone)
+
+        constructedTask.lastWorked = lastWorked
         return constructedTask
+
     def getName(self):
         return self.name
     def getDate(self):
         return self.date
-    
+    def getLastWorked(self):
+        return self.lastWorked
+    def setLastWorked(self, workDate : dTime.date):
+        self.lastWorked = workDate
+
+    @staticmethod
+    def _formatDate(d : dTime.date) -> str:
+        return str(d.month).zfill(2) + "-" + str(d.day).zfill(2) + "-" + str(d.year)
+
 class Homework(Task):
     '''First inherited class, comes with the unique behavior of homework difficulty'''
     # MM-DD-YYYY
-    def __init__(self, taskDate : str, taskName : str, alreadyDone : float = 0.0, taskDifficulty : str = "Not Selected"):
+    def __init__(self, taskDate, taskName : str, alreadyDone : float = 0.0, taskDifficulty : str = "Not Selected"):
         self.name = taskName
-        if type(taskDate) == str:
-            self.date = dTime.date(int(taskDate[6:]), int(taskDate[0:2]), int(taskDate[3:5]))
-        else:
-            self.date = taskDate
+        self.date = dTime.date(int(taskDate[6:]), int(taskDate[0:2]), int(taskDate[3:5])) if type(taskDate) == str else taskDate
         self.difficulty = taskDifficulty
         self.percentDone = alreadyDone
+        self.lastWorked = None
     def getType(self):
         return "homework"
     def setDifficulty(self, taskDifficulty : str):
@@ -63,20 +83,26 @@ class Homework(Task):
     def getSpecial(self):
         return self.getDifficulty()
     def toDict(self):
-        return {"name" : self.name, "date" : str(self.date.month).zfill(2) + "-" + str(self.date.day).zfill(2) + "-" + str(self.date.year), "difficulty" : self.difficulty, "percentDone" : self.percentDone, "type" : self.getType()}
+        return {
+            "name": self.name,
+            "date": Task._formatDate(self.date),
+            "difficulty": self.difficulty,
+            "percentDone": self.percentDone,
+            "type": self.getType(),
+            "lastWorked": Task._formatDate(self.lastWorked) if self.lastWorked else None
+        }
+
 class Major(Task):
     '''Two classes in one; contains exams for exam logic and projects for project logic'''
-    def __init__(self, taskDate : str, taskName : str, alreadyDone : float = 0.0, projectOrExam : bool = True):
+    def __init__(self, taskDate, taskName : str, alreadyDone : float = 0.0, projectOrExam : bool = True):
         self.name = taskName
-        if type(taskDate) == str:
-            self.date = dTime.date(int(taskDate[6:]), int(taskDate[0:2]), int(taskDate[3:5]))
-        else:
-            self.date = taskDate
-        if (projectOrExam):
+        self.date = dTime.date(int(taskDate[6:]), int(taskDate[0:2]), int(taskDate[3:5])) if type(taskDate) == str else taskDate
+        if projectOrExam:
             self.examType = "regular"
         else:
             self.projectType = "individual"
         self.percentDone = alreadyDone
+        self.lastWorked = None
     def getType(self):
         try:
             if self.examType:
@@ -91,9 +117,7 @@ class Major(Task):
             else:
                 raise TypeError
         except TypeError:
-            # I'm...probably gonna have to deal with this later but I'll cross that bridge when I get to it
             return "Error: Tried to set an exam difficulty for a project"
-            # WELL I GOT TO THAT BRIDGE
     def getExamDifficulty(self):
         try:
             if self.getType() == "exam":
@@ -101,8 +125,7 @@ class Major(Task):
             else:
                 raise TypeError
         except TypeError:
-            return ("Error: Tried to grab exam difficulty for a project")
-
+            return "Error: Tried to grab exam difficulty for a project"
     def setProjectAttributes(self, projectCollaboration : bool):
         try:
             if self.getType() == "project":
@@ -110,8 +133,7 @@ class Major(Task):
             else:
                 raise TypeError
         except TypeError:
-            return ("Error: Tried to set project attributes for an exam")
-
+            return "Error: Tried to set project attributes for an exam"
     def getProjectAttributes(self):
         try:
             if self.getType() == "project":
@@ -119,7 +141,7 @@ class Major(Task):
             else:
                 raise TypeError
         except TypeError:
-            return ("Error: Tried to grab project attributes for an exam")
+            return "Error: Tried to grab project attributes for an exam"
     def getPercent(self):
         return self.percentDone
     def updatePercent(self, updateBy : float):
@@ -127,25 +149,28 @@ class Major(Task):
     def updateDate(self, newDate : str):
         self.date = dTime.date(int(newDate[6:]), int(newDate[0:2]), int(newDate[3:5]))
     def getSpecial(self):
-        if self.getType() == "exam":
-            return self.getExamDifficulty()
-        else:
-            return self.getProjectAttributes()
+        return self.getExamDifficulty() if self.getType() == "exam" else self.getProjectAttributes()
     def toDict(self):
         typing = self.getType()
+        base = {
+            "name": self.name,
+            "date": Task._formatDate(self.date),
+            "percentDone": self.percentDone,
+            "type": typing,
+            "lastWorked": Task._formatDate(self.lastWorked) if self.lastWorked else None
+        }
         if typing == "exam":
-            return {"name" : self.name, "date" : str(self.date.month).zfill(2) + "-" + str(self.date.day).zfill(2) + "-" + str(self.date.year), "percentDone" : self.percentDone, "type" : typing, "difficulty" : self.getExamDifficulty()}
+            base["difficulty"] = self.getExamDifficulty()
         else:
-            return {"name" : self.name, "date" : str(self.date.month).zfill(2) + "-" + str(self.date.day).zfill(2) + "-" + str(self.date.year), "percentDone" : self.percentDone, "type" : typing, "attributes" : self.getProjectAttributes()}
+            base["attributes"] = self.getProjectAttributes()
+        return base
 
 class Quiz(Task):
-    def __init__(self, taskDate : str, taskName : str, alreadyDone : float = 0.0):
+    def __init__(self, taskDate, taskName : str, alreadyDone : float = 0.0):
         self.name = taskName
-        if type(taskDate) == str:
-            self.date = dTime.date(int(taskDate[6:]), int(taskDate[0:2]), int(taskDate[3:5]))
-        else:
-            self.date = taskDate
+        self.date = dTime.date(int(taskDate[6:]), int(taskDate[0:2]), int(taskDate[3:5])) if type(taskDate) == str else taskDate
         self.percentDone = alreadyDone
+        self.lastWorked = None
     def getType(self):
         return "quiz"
     def updateDate(self, newDate : str):
@@ -157,16 +182,20 @@ class Quiz(Task):
     def getSpecial(self):
         return None
     def toDict(self):
-        return {"name" : self.name, "date" : str(self.date.month).zfill(2) + "-" + str(self.date.day).zfill(2) + "-" + str(self.date.year), "percentDone" : self.percentDone, "type" : self.getType()}
+        return {
+            "name": self.name,
+            "date": Task._formatDate(self.date),
+            "percentDone": self.percentDone,
+            "type": self.getType(),
+            "lastWorked": Task._formatDate(self.lastWorked) if self.lastWorked else None
+        }
 
 class Prep(Task):
-    def __init__(self, taskDate : str, taskName : str, alreadyDone : float = 0.0):
+    def __init__(self, taskDate, taskName : str, alreadyDone : float = 0.0):
         self.name = taskName
-        if type(taskDate) == str:
-            self.date = dTime.date(int(taskDate[6:]), int(taskDate[0:2]), int(taskDate[3:5]))
-        else:
-            self.date = taskDate
+        self.date = dTime.date(int(taskDate[6:]), int(taskDate[0:2]), int(taskDate[3:5])) if type(taskDate) == str else taskDate
         self.percentDone = alreadyDone
+        self.lastWorked = None
     def getType(self):
         return "prep"
     def updateDate(self, newDate : str):
@@ -178,15 +207,19 @@ class Prep(Task):
     def getSpecial(self):
         return None
     def toDict(self):
-        return {"name" : self.name, "date" : str(self.date.month).zfill(2) + "-" + str(self.date.day).zfill(2) + "-" + str(self.date.year), "percentDone" : self.percentDone, "type" : self.getType()}
+        return {
+            "name": self.name,
+            "date": Task._formatDate(self.date),
+            "percentDone": self.percentDone,
+            "type": self.getType(),
+            "lastWorked": Task._formatDate(self.lastWorked) if self.lastWorked else None
+        }
+
 class Events:
     '''Event logic: Contains when and what an event is and whether it's skippable or not'''
-    def __init__(self, eventName : str, eventDate : str, eventImportant : bool = False, eventNeedsPrep : bool = False):
+    def __init__(self, eventName : str, eventDate, eventImportant : bool = False, eventNeedsPrep : bool = False):
         self.name = eventName
-        if type(eventDate) == str:
-            self.date = dTime.date(int(eventDate[6:]), int(eventDate[0:2]), int(eventDate[3:5]))
-        else:
-            self.date = eventDate
+        self.date = dTime.date(int(eventDate[6:]), int(eventDate[0:2]), int(eventDate[3:5])) if type(eventDate) == str else eventDate
         self.importance = eventImportant
         self.prepNeeded = eventNeedsPrep
     def getName(self):
@@ -196,7 +229,12 @@ class Events:
     def updateDate(self, newDate : str):
         self.date = dTime.date(int(newDate[6:]), int(newDate[0:2]), int(newDate[3:5]))
     def toDict(self):
-        return {"name" : self.name, "date" : str(self.date.month).zfill(2) + "-" + str(self.date.day).zfill(2) + "-" + str(self.date.year), "importance" : self.importance, "needsPrep" : self.prepNeeded}
+        return {
+            "name": self.name,
+            "date": Task._formatDate(self.date),
+            "importance": self.importance,
+            "needsPrep": self.prepNeeded
+        }
     @staticmethod
     def fromDict(eventPackage : dict):
         return Events(eventPackage["name"], eventPackage["date"], eventPackage["importance"], eventPackage["needsPrep"])
@@ -208,30 +246,22 @@ class Events:
         return self.prepNeeded
     def setPrepNeeded(self, prep : bool):
         self.prepNeeded = prep
-    
+
 class Day:
     '''Kinda realized today that I sorta need a day class to hold information such as what tasks it contains and what day of the week it is...'''
-    valid_days : dict[str] = {1 : "Mo", 2 : "Tu", 3 : "Wed", 4 : "Th",  5 : "F", 6 : "Sa", 7 :"Su"}
+    valid_days : dict[str] = {1 : "Mo", 2 : "Tu", 3 : "Wed", 4 : "Th", 5 : "F", 6 : "Sa", 7 : "Su"}
     def __init__(self, date):
         self.tasks : list[Task] = []
-        self.dayEvents : list[Events]= []
-        if type(date) == str:
-            self.date = dTime.date(int(date[6:]), int(date[0:2]), int(date[3:5]))
-        else:
-            self.date = date
+        self.dayEvents : list[Events] = []
+        self.date = dTime.date(int(date[6:]), int(date[0:2]), int(date[3:5])) if type(date) == str else date
         self.dow : str = Day.valid_days[self.date.isoweekday()]
 
     def addTask(self, task : Task):
         if task in self.tasks:
             return False
-        else:
-            self.tasks.append(task)
-            return True
+        self.tasks.append(task)
+        return True
     def removeTask(self, task : Task):
-        # if taskl not in self.tasks:
-        #     return False
-        # self.tasks.remove(taskl)
-        # return True
         index = -1
         for i in range(len(self.tasks)):
             if task.getName() == self.tasks[i].getName() and task.getDate() == self.tasks[i].getDate():
@@ -239,17 +269,15 @@ class Day:
                 break
         if index == -1:
             return False
-        else:
-            del self.tasks[index]
-            return True
+        del self.tasks[index]
+        return True
     def getTasks(self):
         return self.tasks
     def addEvent(self, event : Events):
         if event in self.dayEvents:
             return False
-        else:
-            self.dayEvents.append(event)
-            return True
+        self.dayEvents.append(event)
+        return True
     def removeEvent(self, event : Events):
         index = -1
         for i in range(len(self.dayEvents)):
@@ -258,57 +286,16 @@ class Day:
                 break
         if index == -1:
             return False
-        else:
-            del self.dayEvents[index]
-            return True
+        del self.dayEvents[index]
+        return True
     def getEvents(self):
         return self.dayEvents
-    
-    # def getDate(self):
-    #     dateCounter : int = 0
-    #     monthPortion : int = int(self.date[0:2])
-    #     dayPortion : int = int(self.date[3:5])
-    #     # Adding every single day that's passed previously
-    #     if monthPortion > 1:
-    #         dateCounter += 31
-    #     if monthPortion > 2:
-    #         # Leap year check
-    #         if (int(self.date[6:8]) % 4 == 0):
-    #             dateCounter += 29
-    #         else:
-    #             dateCounter += 28
-    #     if monthPortion > 3:
-    #         dateCounter += 31
-    #     if monthPortion > 4:
-    #         dateCounter += 30
-    #     if monthPortion > 5:
-    #         dateCounter += 31
-    #     if monthPortion > 6:
-    #         dateCounter += 30
-    #     if monthPortion > 7:
-    #         dateCounter += 31
-    #     if monthPortion > 8:
-    #         dateCounter += 31
-    #     if monthPortion > 9:
-    #         dateCounter += 30
-    #     if monthPortion > 10:
-    #         dateCounter += 31
-    #     if monthPortion > 11:
-    #         dateCounter += 30
-    #     dateCounter += dayPortion
-    #     return dateCounter
 
-    
 class User:
-     def __init__(self, uid : str):
+    def __init__(self, uid : str):
         self.settings : dict[str] = {}
         self.settings["lazy"] = []
-        # For reference, Su, Mo, Tu, Wed, Th, F, Sa
         self.settings["Tlimit"] = 15
         self.settings["Elimit"] = 3
         self.settings["expired"] = 2
         self.uid = uid
-     
-
-
-    
