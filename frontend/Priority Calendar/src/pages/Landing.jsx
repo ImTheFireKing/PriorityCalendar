@@ -32,10 +32,8 @@ export default function Landing() {
     });
     if (res.ok) {
       const data = await res.json();
-      console.log("Auth Response: ", data)
-      console.log("UID Value: ", data.uid)
       localStorage.setItem('pc_uid', data.uid);
-      navigate('/dashboard');
+      navigate(data.onboarded ? '/dashboard' : '/onboarding');
     }
   };
 

@@ -100,10 +100,19 @@
   font-size: 0.95rem;
 }
 
-.snapshot-section ul {
-  list-style-type: none;
-  padding: 0;
-  margin: 0 0 16px 0;
+.snapshot-section {
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.snapshot-empty {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  opacity: 0.4;
+  margin: 0;
 }
 
 .snapshot-section li {
@@ -130,7 +139,7 @@
 .dashboard-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   background: var(--peach-light);
   padding: 20px 24px;
   border-radius: 12px;
@@ -139,11 +148,46 @@
 
 .dashboard-header h2 {
   margin: 0;
+  margin-top: 5px; /* Aligns with the controls */
   font-family: var(--font-display);
   color: var(--text-primary);
 }
 
-/* Add Task button — matches Nav logout pill style */
+/* Header Controls & Sync Indicator */
+.dashboard-controls {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.sync-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  opacity: 0.7;
+  margin-top: 10px;
+}
+
+.spinner-tiny {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--peach-mid);
+  border-top: 2px solid var(--peach-deep);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Add Task Container */
+.add-btn-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
 .add-btn {
   background: none;
   border: 1.5px solid var(--text-primary);
@@ -155,10 +199,48 @@
   font-weight: 500;
   cursor: pointer;
   transition: opacity 0.15s ease;
+  position: relative;
 }
 
 .add-btn:hover {
   opacity: 0.6;
+}
+
+/* Canvas Integration Additions */
+.canvas-badge {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  background: var(--peach-deep);
+  color: white;
+  border-radius: 50%;
+  min-width: 18px;
+  height: 18px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  line-height: 1;
+  pointer-events: none;
+  animation: pulse 2s infinite;
+}
+
+.clear-suggestions-btn {
+  background: none;
+  border: none;
+  color: var(--peach-deep);
+  text-decoration: underline;
+  font-size: 0.75rem;
+  cursor: pointer;
+  opacity: 0.6;
+  padding: 0;
+  font-family: var(--font-body);
+}
+
+.clear-suggestions-btn:hover {
+  opacity: 1;
 }
 
 /* Recommendations hub */
@@ -199,4 +281,116 @@
 .pc-calendar .react-calendar__tile--now.lazy-day {
   background: var(--peach-warm) !important;
   opacity: 0.85;
+}
+
+.refresh-indicator {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--peach-warm);
+  animation: shimmer 1s ease-in-out infinite;
+  z-index: 999;
+}
+
+/* Keyframes */
+@keyframes shimmer {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+@keyframes spin { 
+  100% { transform: rotate(360deg); } 
+}
+
+@keyframes pulse {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+.get-more-btn {
+  margin-top: 12px;
+  width: 100%;
+  padding: 10px;
+  background: transparent;
+  border: 1.5px dashed var(--peach-mid);
+  border-radius: 10px;
+  color: var(--peach-warm);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.get-more-btn:hover {
+  background: var(--peach-mid);
+  color: var(--bg);
+}
+
+/* ── Shepherd tour theme ── */
+.pc-shepherd.shepherd-has-cancel-icon .shepherd-cancel-icon {
+  color: var(--text-primary);
+  opacity: 0.45;
+}
+
+.shepherd-element.pc-shepherd .shepherd-content {
+  background: var(--peach-light);
+  border-radius: 14px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+  font-family: var(--font-body);
+  border: 1.5px solid var(--peach-mid);
+  max-width: 320px;
+}
+
+.shepherd-element.pc-shepherd .shepherd-text {
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  color: var(--text-primary);
+  line-height: 1.55;
+  padding: 16px 18px 8px;
+}
+
+.shepherd-element.pc-shepherd .shepherd-text strong {
+  font-weight: 700;
+  color: var(--peach-deep);
+}
+
+.shepherd-element.pc-shepherd .shepherd-footer {
+  padding: 8px 18px 14px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.shepherd-element.pc-shepherd .shepherd-button {
+  background: none;
+  border: 1.5px solid var(--text-primary);
+  color: var(--text-primary);
+  border-radius: 20px;
+  padding: 5px 16px;
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.shepherd-element.pc-shepherd .shepherd-button:hover { opacity: 0.6; }
+
+.shepherd-element.pc-shepherd .shepherd-button.shepherd-button-secondary {
+  opacity: 0.45;
+  border-color: transparent;
+}
+
+.shepherd-element.pc-shepherd .shepherd-button.shepherd-button-secondary:hover {
+  opacity: 0.8;
+  border-color: var(--text-primary);
+}
+
+.shepherd-modal-overlay-container {
+  fill: rgba(0, 0, 0, 0.35);
+}
+
+.shepherd-element.pc-shepherd .shepherd-arrow::before {
+  background: var(--peach-light);
+  border-color: var(--peach-mid);
 }

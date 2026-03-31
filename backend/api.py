@@ -9,12 +9,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from auth import router as authRouter
 from auth import get_current_uid
 from fastapi import Depends
+from fastapi import Response
 
 app = FastAPI()
 app.include_router(authRouter)
 
 origins = [
     "http://localhost:5173"
+    "https://priority-calendar-trial-p3ns.vercel.app"
 ]
 
 app.add_middleware(
@@ -55,9 +57,11 @@ def getTask(uid : str, taskName : str, currentUid : str = Depends(get_current_ui
                 "type" : task.getType(),
                 "dueDate" : task.getDate().isoformat(),
                 "otherDetails" : task.getSpecial()
+                
             }]}
     else:
         raise HTTPException(status_code=404, detail="Error: Task could not be found")
+
 class UpdateTask(BaseModel):
     taskName : str
     date : str | None = None
@@ -96,7 +100,6 @@ def updateTask(uid : str, dataGiven : UpdateTask, currentUid : str = Depends(get
             else:
                 statusList["status"] = {"percentChange" : "ok"}
                 main.checkTasks(uid, calendar)
-
         return statusList
     else:
         raise HTTPException(status_code=404, detail="Error: Task not found")
@@ -193,7 +196,7 @@ def updateEvent(uid : str, dataGiven : UpdateEvent, currentUid : str = Depends(g
                 raise HTTPException(status_code=400, detail="Error: Failed to update importance of event")
             else: 
                 statusList["importance"] = {"importance" : "ok"}
-        main.checkEvents()
+        main.checkEvents(uid, calendar)
         return statusList
     else:
         raise HTTPException(status_code=404, detail="Error: Event not found")
@@ -238,9 +241,10 @@ def sendRecommendations(uid : str, currentUid : str = Depends(get_current_uid)):
                 "type" : task.getType(),
                 "dueDate" : task.getDate().isoformat(),
                 "howMuch" : percent,
-                "otherDetails" : task.getSpecial()
+                "otherDetails" : task.getSpecial(),     
+                "forced" : forced                # True = bypassed task limit due to high workload today
             }
-            for (score, task), percent in zip(tasks, percentages)
+            for (score, task, forced), percent in zip(tasks, percentages)
         ],
         "events" : [
             {
@@ -249,7 +253,7 @@ def sendRecommendations(uid : str, currentUid : str = Depends(get_current_uid)):
                 "date" : event.getDate().isoformat(),
                 "needsPrep" : event.getPrepNeeded(),
             }
-            for event in events
+            for (score, event) in events
         ]
     }
 
@@ -261,33 +265,31 @@ def getDailySchedule(uid : str, dateString: str, currentUid : str = Depends(get_
     year = dateString[6:]
     calendar = pcStorage.getCalendar(uid, year)
     
-    # Calculate the index of the day in your calendar list (just like in main.py)
     target_date = dTime.datetime.strptime(dateString, "%m-%d-%Y").date()
     start_of_year = dTime.date(int(year), 1, 1)
     index = (target_date - start_of_year).days
     
     target_day = calendar[index]
     
-    # Return the day's payload
     return {
             "tasks": [
                 {
                     "name": task.getName(),
                     "type": task.getType(),
                     "dueDate": task.getDate().isoformat(),
-                } for task in target_day.getTasks() # Updated to match pcClasses!
+                    "otherDetails": task.getSpecial(),
+                } for task in target_day.getTasks()
             ],
             "events": [
                 {
                     "name": event.getName(),
                     "time": event.getDate().isoformat(),
-                    "importance": event.getImportance()
-                } for event in target_day.getEvents() # Updated to match pcClasses!
+                    "importance": event.getImportance(),
+                    "needsPrep": event.getPrepNeeded(),
+                } for event in target_day.getEvents()
             ]
         }
 
-
-# Think I just got settings left and that's the framework for APIs done...and backend done as a result
 
 @app.get("/users/{uid}/settings")
 def getSetting(uid : str, settingField : str, currentUid : str = Depends(get_current_uid)):
@@ -303,7 +305,6 @@ class updateSetting(BaseModel):
     newDays : list[str] | None = None
     newELimit : int | None = None
     newTLimit : int | None = None
-    # By default, keep expiration date at two weeks; Else, allow changes to preset values (2 weeks, 1 week, 4 weeks)
     newExpiration : str | None = None
 @app.patch("/users/{uid}/settings")
 def updateSettings(uid : str, dataGiven : updateSetting, currentUid : str = Depends(get_current_uid)):
@@ -322,3 +323,108 @@ def updateSettings(uid : str, dataGiven : updateSetting, currentUid : str = Depe
     return {"status" : "ok"}
 
 
+@app.post("/users/{uid}/onboarding")
+def markOnboarded(uid: str, response : Response, currentUid : str = Depends(get_current_uid)):
+    if uid != currentUid:
+        raise HTTPException(status_code=403, detail="Forbidden Resources")
+    if pcStorage.onboardUser(uid):
+        from auth import createSessionToken, SESSION_HOURS
+        newToken = createSessionToken(uid, True)
+        response.set_cookie(key="session", value=newToken, httponly=True, secure=False, samesite="lax", max_age=SESSION_HOURS * 3600, path="/")
+        return {"status" : "ok"}
+    else:
+        raise HTTPException(status_code=404, detail="Error: User could not be found somehow?")
+
+class CanvasConnect(BaseModel):
+    institutionalUrl : str
+    token : str
+
+@app.post("/users/{uid}/canvas/connect")
+def connectCanvas(uid: str, body: CanvasConnect, currentUid: str = Depends(get_current_uid)):
+    if uid != currentUid:
+        raise HTTPException(status_code=403, detail="Forbidden Resources")
+    import httpx as _httpx
+    test = _httpx.get(
+        f"{body.institutionalUrl.rstrip('/')}/api/v1/users/self",
+        headers={"Authorization": f"Bearer {body.token}"}, timeout=8
+    )
+    if test.status_code != 200:
+        raise HTTPException(status_code=400, detail="Canvas token invalid or URL incorrect")
+    pcStorage.storeCanvasCredentials(uid, body.token, body.institutionalUrl)
+    import threading, canvas
+    threading.Thread(target=canvas.syncUser, args=(uid,), daemon=True).start()
+    return {"status": "ok"}
+
+class CanvasIcsConnect(BaseModel):
+    icsUrl: str
+
+@app.post("/users/{uid}/canvas/connect/ics")
+def connectCanvasIcs(uid: str, body: CanvasIcsConnect, currentUid: str = Depends(get_current_uid)):
+    if uid != currentUid:
+        raise HTTPException(status_code=403, detail="Forbidden Resources")
+    import httpx as _httpx
+    try:
+        test = _httpx.get(body.icsUrl, timeout=8, follow_redirects=True)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Could not reach that URL")
+    if test.status_code != 200 or "BEGIN:VCALENDAR" not in test.text[:200]:
+        raise HTTPException(status_code=400, detail="URL does not appear to be a valid Canvas ICS feed")
+    pcStorage.storeCanvasIcsUrl(uid, body.icsUrl)
+    import threading, canvas
+    threading.Thread(target=canvas.syncUserIcs, args=(uid,), daemon=True).start()
+    return {"status": "ok"}
+
+@app.post("/users/{uid}/canvas/import")
+def importCanvas(uid: str, currentUid: str = Depends(get_current_uid)):
+    if uid != currentUid:
+        raise HTTPException(status_code=403, detail="Forbidden Resources")
+    import threading, canvas
+    threading.Thread(target=canvas.syncUser, args=(uid,), daemon=True).start()
+    return {"status": "ok"}
+
+@app.get("/users/{uid}/canvas/pending")
+def getPendingCanvasTasks(uid: str, currentUid: str = Depends(get_current_uid)):
+    if uid != currentUid:
+        raise HTTPException(status_code=403, detail="Forbidden Resources")
+    tasks = pcStorage.getPendingCanvasTasks(uid)
+    return {"pending": tasks, "count": len(tasks)}
+
+class ConfirmCanvasTask(BaseModel):
+    canvasId : str
+    name     : str
+    date     : str          # MM-DD-YYYY
+    taskType : str
+    special  : str | None = None
+
+@app.post("/users/{uid}/canvas/confirm")
+def confirmCanvasTask(uid: str, body: ConfirmCanvasTask, currentUid: str = Depends(get_current_uid)):
+    if uid != currentUid:
+        raise HTTPException(status_code=403, detail="Forbidden Resources")
+    calendar = pcStorage.getCalendar(uid, body.date[6:])
+    newTask = main.createTask(uid, body.name, body.date, body.taskType, calendar, 0.0)
+    if body.special:
+        main.updateTask(newTask, "special", body.special, uid, calendar)
+    pcStorage.removePendingCanvasTask(uid, body.canvasId)
+    return {"status": "ok"}
+
+@app.delete("/users/{uid}/canvas/pending/{canvasId}")
+def dismissCanvasTask(uid: str, canvasId: str, currentUid: str = Depends(get_current_uid)):
+    if uid != currentUid:
+        raise HTTPException(status_code=403, detail="Forbidden Resources")
+    pcStorage.removePendingCanvasTask(uid, canvasId)
+    return {"status": "ok"}
+
+@app.delete("/users/{uid}/canvas/pending")
+def clearCanvasChamber(uid : str, currentUid : str = Depends(get_current_uid)):
+    if uid != currentUid:
+        raise HTTPException(status_code=403, detail="Forbiden Resources")
+    newChamber = pcStorage.storePendingCanvasTasks(uid, [])
+    if not newChamber:
+        raise HTTPException(status_code=500, detail="Failed to clear all suggestions.")
+    return {"status" : "ok", "message" : "Pending Tasks Cleared"}
+@app.get("/users/{uid}/canvas/status")
+def getCanvasSyncStatus(uid : str, currentUid : str = Depends(get_current_uid)):
+    if uid != currentUid:
+        raise HTTPException(status_code=403, detail="Forbidden Resources")
+    syncStatus = pcStorage.getSyncStatus(uid)
+    return {"syncStatus" : syncStatus}

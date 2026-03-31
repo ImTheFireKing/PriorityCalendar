@@ -1,0 +1,10 @@
+fastapi;
+uvicorn[standard];
+pymongo[srv]==3.12;
+python-dotenv;
+requests;
+httpx;
+google-auth;
+python-jose[cryptography];
+pydantic;
+icalendar;

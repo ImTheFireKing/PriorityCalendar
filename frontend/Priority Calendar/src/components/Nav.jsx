@@ -29,7 +29,7 @@ export default function Nav({ onAuthTrigger }) {
           <a href="/changelog" className="nav-link" target="_blank" rel="noreferrer">
             Changelog
           </a>
-          <Link to="/settings" className="nav-link">Settings</Link>
+          <Link to="/settings" className="nav-link" id="tour-settings">Settings</Link>
           <button className="nav-logout" onClick={handleLogOut}>Log Out</button>
         </div>
       </nav>

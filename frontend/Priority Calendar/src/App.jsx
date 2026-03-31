@@ -5,6 +5,7 @@ import Changelog from './pages/Changelog';
 import './index.css';
 import Dashboard from './pages/Dashboard';
 import Settings from './pages/Settings';
+import Onboarding from './pages/Onboarding';
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
         <Route path="/changelog" element={<Changelog />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/onboarding" element={<Onboarding />} />
       </Routes>
     </BrowserRouter>
   );
