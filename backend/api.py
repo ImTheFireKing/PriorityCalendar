@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, APIRouter
 from fastapi import HTTPException
 from pydantic import BaseModel
 import main
@@ -12,7 +12,7 @@ from fastapi import Depends
 from fastapi import Response
 
 app = FastAPI()
-app.include_router(authRouter)
+router = APIRouter(prefix="/api")
 
 origins = [
     "http://localhost:5173",
@@ -33,7 +33,7 @@ class CreateTask(BaseModel):
     taskType : str
     special : str | None = None
     alreadyDone : float = 0.0
-@app.post("/users/{uid}/tasks")
+@router.post("/users/{uid}/tasks")
 def createTask(uid : str, dataGiven : CreateTask, currentUid : str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, details="Forbidden Resources")
@@ -44,7 +44,7 @@ def createTask(uid : str, dataGiven : CreateTask, currentUid : str = Depends(get
         main.updateTask(newTask, "special", dataGiven.special, uid, calendar)
     return {"status" : "ok"}
 
-@app.get("/users/{uid}/tasks")
+@router.get("/users/{uid}/tasks")
 def getTask(uid : str, taskName : str, currentUid : str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
@@ -67,7 +67,7 @@ class UpdateTask(BaseModel):
     date : str | None = None
     special : str | None = None
     percentChange : float | None = None
-@app.patch("/users/{uid}/tasks")
+@router.patch("/users/{uid}/tasks")
 def updateTask(uid : str, dataGiven : UpdateTask, currentUid : str = Depends(get_current_uid)):
     #MM-DD-YYYY
     if uid != currentUid:
@@ -106,7 +106,7 @@ def updateTask(uid : str, dataGiven : UpdateTask, currentUid : str = Depends(get
     
 class DeleteTask(BaseModel):
     taskName : str
-@app.delete("/users/{uid}/tasks")
+@router.delete("/users/{uid}/tasks")
 def deleteTask(uid : str, dataGiven : DeleteTask, currentUid : str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
@@ -134,7 +134,7 @@ class CreateEvent(BaseModel):
     needsPrep : bool  = False
     isImportant : bool  = False
         
-@app.post("/users/{uid}/events")
+@router.post("/users/{uid}/events")
 def createEvent(uid : str, dataGiven : CreateEvent, currentUid : str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
@@ -142,7 +142,7 @@ def createEvent(uid : str, dataGiven : CreateEvent, currentUid : str = Depends(g
     main.createEvent(uid, dataGiven.name, dataGiven.date, calendar, dataGiven.needsPrep, dataGiven.isImportant)
     return {"status" : "ok"}
 
-@app.get("/users/{uid}/events")
+@router.get("/users/{uid}/events")
 def getEvent(uid : str, name : str, currentUid : str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
@@ -164,7 +164,7 @@ class UpdateEvent(BaseModel):
     date : str | None = None
     needsPrep : str | None = None
     isImportant : str | None = None
-@app.patch("/users/{uid}/events")    
+@router.patch("/users/{uid}/events")    
 def updateEvent(uid : str, dataGiven : UpdateEvent, currentUid : str = Depends(get_current_uid)):
     #MM-DD-YYYY
     if uid != currentUid:
@@ -203,7 +203,7 @@ def updateEvent(uid : str, dataGiven : UpdateEvent, currentUid : str = Depends(g
     
 class DeleteEvent(BaseModel):
     name : str
-@app.delete("/users/{uid}/events")
+@router.delete("/users/{uid}/events")
 def deleteEvent(uid : str, dataGiven : DeleteEvent, currentUid : str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
@@ -223,7 +223,7 @@ def deleteEvent(uid : str, dataGiven : DeleteEvent, currentUid : str = Depends(g
 
 
 # Section 3: Recommendations
-@app.get("/users/{uid}/recommendations")
+@router.get("/users/{uid}/recommendations")
 def sendRecommendations(uid : str, currentUid : str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
@@ -257,7 +257,7 @@ def sendRecommendations(uid : str, currentUid : str = Depends(get_current_uid)):
         ]
     }
 
-@app.get("/users/{uid}/schedule/{dateString}")
+@router.get("/users/{uid}/schedule/{dateString}")
 def getDailySchedule(uid : str, dateString: str, currentUid : str = Depends(get_current_uid)):
     # Expects dateString in MM-DD-YYYY format
     if uid != currentUid:
@@ -291,7 +291,7 @@ def getDailySchedule(uid : str, dateString: str, currentUid : str = Depends(get_
         }
 
 
-@app.get("/users/{uid}/settings")
+@router.get("/users/{uid}/settings")
 def getSetting(uid : str, settingField : str, currentUid : str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
@@ -306,7 +306,7 @@ class updateSetting(BaseModel):
     newELimit : int | None = None
     newTLimit : int | None = None
     newExpiration : str | None = None
-@app.patch("/users/{uid}/settings")
+@router.patch("/users/{uid}/settings")
 def updateSettings(uid : str, dataGiven : updateSetting, currentUid : str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
@@ -323,7 +323,7 @@ def updateSettings(uid : str, dataGiven : updateSetting, currentUid : str = Depe
     return {"status" : "ok"}
 
 
-@app.post("/users/{uid}/onboarding")
+@router.post("/users/{uid}/onboarding")
 def markOnboarded(uid: str, response : Response, currentUid : str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
@@ -339,7 +339,7 @@ class CanvasConnect(BaseModel):
     institutionalUrl : str
     token : str
 
-@app.post("/users/{uid}/canvas/connect")
+@router.post("/users/{uid}/canvas/connect")
 def connectCanvas(uid: str, body: CanvasConnect, currentUid: str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
@@ -358,7 +358,7 @@ def connectCanvas(uid: str, body: CanvasConnect, currentUid: str = Depends(get_c
 class CanvasIcsConnect(BaseModel):
     icsUrl: str
 
-@app.post("/users/{uid}/canvas/connect/ics")
+@router.post("/users/{uid}/canvas/connect/ics")
 def connectCanvasIcs(uid: str, body: CanvasIcsConnect, currentUid: str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
@@ -374,7 +374,7 @@ def connectCanvasIcs(uid: str, body: CanvasIcsConnect, currentUid: str = Depends
     threading.Thread(target=canvas.syncUserIcs, args=(uid,), daemon=True).start()
     return {"status": "ok"}
 
-@app.post("/users/{uid}/canvas/import")
+@router.post("/users/{uid}/canvas/import")
 def importCanvas(uid: str, currentUid: str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
@@ -382,7 +382,7 @@ def importCanvas(uid: str, currentUid: str = Depends(get_current_uid)):
     threading.Thread(target=canvas.syncUser, args=(uid,), daemon=True).start()
     return {"status": "ok"}
 
-@app.get("/users/{uid}/canvas/pending")
+@router.get("/users/{uid}/canvas/pending")
 def getPendingCanvasTasks(uid: str, currentUid: str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
@@ -396,7 +396,7 @@ class ConfirmCanvasTask(BaseModel):
     taskType : str
     special  : str | None = None
 
-@app.post("/users/{uid}/canvas/confirm")
+@router.post("/users/{uid}/canvas/confirm")
 def confirmCanvasTask(uid: str, body: ConfirmCanvasTask, currentUid: str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
@@ -407,14 +407,14 @@ def confirmCanvasTask(uid: str, body: ConfirmCanvasTask, currentUid: str = Depen
     pcStorage.removePendingCanvasTask(uid, body.canvasId)
     return {"status": "ok"}
 
-@app.delete("/users/{uid}/canvas/pending/{canvasId}")
+@router.delete("/users/{uid}/canvas/pending/{canvasId}")
 def dismissCanvasTask(uid: str, canvasId: str, currentUid: str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
     pcStorage.removePendingCanvasTask(uid, canvasId)
     return {"status": "ok"}
 
-@app.delete("/users/{uid}/canvas/pending")
+@router.delete("/users/{uid}/canvas/pending")
 def clearCanvasChamber(uid : str, currentUid : str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbiden Resources")
@@ -422,9 +422,12 @@ def clearCanvasChamber(uid : str, currentUid : str = Depends(get_current_uid)):
     if not newChamber:
         raise HTTPException(status_code=500, detail="Failed to clear all suggestions.")
     return {"status" : "ok", "message" : "Pending Tasks Cleared"}
-@app.get("/users/{uid}/canvas/status")
+@router.get("/users/{uid}/canvas/status")
 def getCanvasSyncStatus(uid : str, currentUid : str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
     syncStatus = pcStorage.getSyncStatus(uid)
     return {"syncStatus" : syncStatus}
+
+app.include_router(authRouter, prefix="/api")
+app.include_router(router)
