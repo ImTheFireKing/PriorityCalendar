@@ -143,14 +143,23 @@ def deleteEvent(uid: str, event: pcClasses.Events) -> bool:
 # ── Users & Settings ──────────────────────────────────────────────────────────
 def addUser(uid: str, userSettings: dict) -> bool:
     if not users_collection.find_one({"uid": uid}):
-        users_collection.insert_one({"uid": uid, "settings": userSettings})
+        users_collection.insert_one({"uid": uid, "settings": userSettings, "onboarded" : False})
         return True
     return False
-
+def onboardUser(uid: str):
+    return users_collection.update_one({"uid": uid}, {"$set" : {"onboarded" : True}}).modified_count == 1
 def getUser(uid: str):
     user = users_collection.find_one({"uid": uid})
     return user if user else False
-
+def getLastCanvasSync(uid : str):
+    possibleUser = users_collection.find_one({"uid" : uid})
+    if possibleUser:
+        return possibleUser["lastCanvasSync"]
+def setSyncStatus(uid : str, status : bool):
+    return users_collection.update_one({"uid" : uid}, {"$set" : {"syncStatus" : status}}).modified_count == 1
+def getSyncStatus(uid : str):
+    status = users_collection.find_one({"uid" : uid})
+    return status.get("syncStatus", False) if status else False
 def getSettings(uid: str) -> dict | None:
     if uid in _settingsCache:
         return _settingsCache[uid]
@@ -177,3 +186,43 @@ def delUser(uid: str):
     _eventsCache.pop(uid, None)
     _settingsCache.pop(uid, None)
     _invalidateCalendar(uid)
+
+# ── Canvas ────────────────────────────────────────────────────────────────────
+def storeCanvasCredentials(uid: str, token: str, institutionUrl: str) -> bool:
+    result = users_collection.update_one(
+        {"uid": uid},
+        {"$set": {"canvasToken": token, "canvasUrl": institutionUrl}}
+    )
+    return result.modified_count == 1
+
+def getPendingCanvasTasks(uid: str) -> list:
+    user = users_collection.find_one({"uid": uid}, {"pendingCanvasTasks": 1})
+    return user.get("pendingCanvasTasks", []) if user else []
+
+def storePendingCanvasTasks(uid: str, tasks: list) -> bool:
+    result = users_collection.update_one(
+        {"uid": uid},
+        {"$set": {"pendingCanvasTasks": tasks}}
+    )
+    return result.modified_count == 1
+
+def removePendingCanvasTask(uid: str, canvasId: str) -> bool:
+    result = users_collection.update_one(
+        {"uid": uid},
+        {"$pull": {"pendingCanvasTasks": {"canvasId": canvasId}}}
+    )
+    return result.modified_count == 1
+
+def updateLastCanvasSync(uid: str, dateStr: str) -> bool:
+    result = users_collection.update_one(
+        {"uid": uid},
+        {"$set": {"lastCanvasSync": dateStr}}
+    )
+    return result.modified_count == 1
+
+def storeCanvasIcsUrl(uid: str, icsUrl: str) -> bool:
+    result = users_collection.update_one(
+        {"uid": uid},
+        {"$set": {"canvasIcsUrl": icsUrl}}
+    )
+    return result.modified_count == 1

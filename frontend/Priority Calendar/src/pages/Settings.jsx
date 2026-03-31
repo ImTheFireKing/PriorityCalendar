@@ -42,6 +42,16 @@ export default function Settings() {
   const [loading,  setLoading]  = useState(true);
   const [saved,    setSaved]    = useState(false);
 
+  const [canvasUrl,    setCanvasUrl]    = useState('');
+  const [canvasToken,  setCanvasToken]  = useState('');
+  const [canvasStatus, setCanvasStatus] = useState(null); // 'ok' | 'error' | null
+  const [canvasLoading, setCanvasLoading] = useState(false);
+
+  const [icsUrl,     setIcsUrl]     = useState('');
+  const [icsStatus,  setIcsStatus]  = useState(null); // 'ok' | 'error' | null
+  const [icsLoading, setIcsLoading] = useState(false);
+  const [icsOpen,    setIcsOpen]    = useState(false);
+
   useEffect(() => {
     if (!uid) { navigate('/login'); return; }
 
@@ -71,6 +81,48 @@ export default function Settings() {
     setLazyDays(prev =>
       prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
     );
+  };
+
+  const handleCanvasConnect = async () => {
+    setCanvasLoading(true);
+    setCanvasStatus(null);
+    try {
+      const res = await fetch(`${apiUrl}/users/${uid}/canvas/connect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ institutionalUrl: canvasUrl, token: canvasToken }),
+      });
+      setCanvasStatus(res.ok ? 'ok' : 'error');
+    } catch {
+      setCanvasStatus('error');
+    } finally {
+      setCanvasLoading(false);
+    }
+  };
+
+  const handleIcsConnect = async () => {
+    setIcsLoading(true);
+    setIcsStatus(null);
+    try {
+      const res = await fetch(`${apiUrl}/users/${uid}/canvas/connect/ics`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ icsUrl: icsUrl }),
+      });
+      
+      if (res.ok) {
+        setIcsStatus('ok');
+      } else {
+        setIcsStatus('error');
+      }
+    } catch (err) {
+      console.error('ICS Connection Error:', err);
+      setIcsStatus('error');
+    } finally {
+      setIcsLoading(false);
+    }
   };
 
   const handleSave = async () => {
@@ -163,7 +215,7 @@ export default function Settings() {
           <section className="settings-section">
             <h3>Task Expiration Window</h3>
             <p className="settings-desc">
-              How far ahead the recommender looks for upcoming tasks.
+              How long the recommender will bring up tasks past their due date.
             </p>
             <select value={expiry} onChange={(e) => setExpiry(e.target.value)}>
               {EXPIRY_OPTIONS.map(opt => (
@@ -172,6 +224,85 @@ export default function Settings() {
             </select>
           </section>
 
+          {/* ── Canvas Integration ── */}
+          <section className="settings-section">
+            <h3>Canvas Integration</h3>
+            <p className="settings-desc">
+              Automatically pull in upcoming assignments. Create a Canvas Access Token or provide your Canvas Calendar's iCalendar link for a simpler setup.
+            </p>
+            <div className="integration-toggle-tabs">
+              <button 
+                className={`tab-btn ${!icsOpen ? 'active' : ''}`} 
+                onClick={() => setIcsOpen(false)}
+              >
+                Canvas API (Recommended)
+              </button>
+              <button 
+                className={`tab-btn ${icsOpen ? 'active' : ''}`} 
+                onClick={() => setIcsOpen(true)}
+              >
+                Calendar Feed (ICS)
+              </button>
+            </div>
+
+            {!icsOpen ? (
+              <div className="canvas-connect-fields">
+                <label>
+                  Institution URL
+                  <input
+                    type="url"
+                    placeholder="https://canvas.school.edu"
+                    value={canvasUrl}
+                    onChange={(e) => setCanvasUrl(e.target.value)}
+                  />
+                </label>
+                <label>
+                  Personal Access Token
+                  <input
+                    type="password"
+                    placeholder="Canvas access token"
+                    value={canvasToken}
+                    onChange={(e) => setCanvasToken(e.target.value)}
+                  />
+                </label>
+                <div className="canvas-connect-footer">
+                  <button
+                    className="canvas-connect-btn"
+                    onClick={handleCanvasConnect}
+                    disabled={canvasLoading || !canvasUrl || !canvasToken}
+                  >
+                    {canvasLoading ? 'Connecting…' : 'Connect Canvas API'}
+                  </button>
+                  {canvasStatus === 'ok' && <span className="status-ok">Connected! Sync started.</span>}
+                  {canvasStatus === 'error' && <span className="status-error">Failed — check URL/Token.</span>}
+                </div>
+              </div>
+            ) : (
+              <div className="canvas-connect-fields">
+                <label>
+                  Canvas Calendar URL (ICS)
+                  <input
+                    type="url"
+                    placeholder="https://canvas.school.edu/feeds/calendars/user_..."
+                    value={icsUrl}
+                    onChange={(e) => setIcsUrl(e.target.value)}
+                  />
+                </label>
+                <p className="settings-hint">Find this in Canvas → Calendar → Calendar Feed</p>
+                <div className="canvas-connect-footer">
+                  <button
+                    className="canvas-connect-btn"
+                    onClick={handleIcsConnect}
+                    disabled={icsLoading || !icsUrl}
+                  >
+                    {icsLoading ? 'Connecting…' : 'Connect Calendar Feed'}
+                  </button>
+                  {icsStatus === 'ok' && <span className="status-ok">Feed Connected! Sync started.</span>}
+                  {icsStatus === 'error' && <span className="status-error">Invalid URL or unreachable feed.</span>}
+                </div>
+              </div>
+            )}
+          </section>
           <div className="settings-actions">
             <button className="save-btn" onClick={handleSave}>
               {saved ? '✓ Saved!' : 'Save Changes'}

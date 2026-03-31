@@ -69,7 +69,7 @@ def updateTask(task: pcClasses.Task, field: str, newInfo: str, uid: str, calenda
         elif taskType == 'exam':
             task.setExamDifficulty(newInfo)
         elif taskType == 'project':
-            task.setProjectAttributes(newInfo, True)
+            task.setProjectAttributes(newInfo == 'true')
         else: 
             return "Error: Attempted to update special field in a non-special task"
         return pcStorage.updateTasks(uid, task)  # no calendar change

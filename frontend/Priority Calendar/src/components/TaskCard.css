@@ -215,3 +215,99 @@
   color: #ff4757;
   font-weight: 600;
 }
+
+/* ── Edit button ── */
+.edit-btn {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  color: var(--text-primary);
+  opacity: 0.4;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+  transition: opacity 0.15s ease;
+  line-height: 1;
+}
+
+.edit-btn:hover { opacity: 0.8; }
+
+/* ── Inline edit form ── */
+.task-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: var(--bg);
+  border: 1.5px solid var(--peach-mid);
+  border-radius: 8px;
+}
+
+.task-edit-form label {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  gap: 4px;
+}
+
+.task-edit-form input[type="date"],
+.task-edit-form select {
+  padding: 5px 8px;
+  border: 1.5px solid var(--peach-warm);
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  background: var(--peach-light);
+  color: var(--text-primary);
+}
+
+.task-edit-form input[type="date"]:focus,
+.task-edit-form select:focus {
+  outline: none;
+  border-color: var(--peach-deep);
+}
+
+.task-edit-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.task-edit-check-label {
+  display: flex;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.task-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+
+.delete-btn {
+  background-color: #ffeded;
+  color: #c9603a; 
+  border: 1.5px solid #c9603a;
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.delete-btn:hover {
+  background-color: #c9603a;
+  color: white;
+}

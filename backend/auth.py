@@ -8,6 +8,7 @@ import datetime as dTime
 import os
 import pcStorage
 import httpx
+import pcClasses
 
 router = APIRouter()
 
@@ -19,14 +20,14 @@ SESSION_HOURS = 5
 class GoogleTokenBody(BaseModel):
     token : str
 
-def createSessionToken(uid : str) -> str:
+def createSessionToken(uid : str, onboarded : bool) -> str:
     expire = datetime.utcnow() + timedelta(hours=SESSION_HOURS) 
-    return jwt.encode({"sub": uid, "exp": expire}, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    return jwt.encode({"sub": uid, "exp": expire, "onboarded" : onboarded}, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 def verifySessionToken(token: str) -> str:
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        return payload["sub"]
+        return {"uid" : payload["sub"], "onboarded" : payload.get("onboarded", False)}
     except JWTError:
         raise HTTPException(status_code=401, detail="Session Expired/Invalid, Log In")
 
@@ -43,23 +44,30 @@ def googleAuth(body : GoogleTokenBody, response : Response):
     googleUID = str(info["sub"])
     email      = info["email"]
     name       = info.get("name", "")
-    # Creates uses in Mongo if not there, grabs from Mongo otherwise
+    # Creates user in Mongo if not there, grabs from Mongo otherwise
     existing = pcStorage.getUser(googleUID)
     if not existing:
         pcStorage.addUser(googleUID, {"lazy": [], "Tlimit": 15, "Elimit": 3, "expired": 2})
-
-    sessionToken = createSessionToken(googleUID)
+    onboardedStatus = existing.get("onboarded", False) if existing else False
+    today = pcClasses.Task._formatDate(dTime.date.today())
+    if existing and existing.get("lastCanvasSync") != today:
+        import threading, canvas
+        if existing.get("canvasToken"):
+            threading.Thread(target=canvas.syncUser, args=(googleUID,), daemon=True).start()
+        elif existing.get("canvasIcsUrl"):
+            threading.Thread(target=canvas.syncUserIcs, args=(googleUID,), daemon=True).start()
+    sessionToken = createSessionToken(googleUID, onboardedStatus)
     response.set_cookie(
         key="session",
         value=sessionToken,
         httponly=True,
-        secure=False, # Note: Change this to true once we push to AWS
-        samesite="lax",
+        secure=True, # Note: Change this to true once we push to AWS
+        samesite="none",
         max_age = SESSION_HOURS * 3600,
         path="/"
     )
 
-    return {"uid" : googleUID, "name" : name, "email" : email}
+    return {"uid" : googleUID, "name" : name, "email" : email, "onboarded" : onboardedStatus}
 
 @router.post("/auth/logout")
 def logout(response: Response):
@@ -71,8 +79,11 @@ def get_current_uid(request: Request) -> str:
     token = request.cookies.get("session")
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    return verifySessionToken(token)
+    return verifySessionToken(token)["uid"]
 
 @router.get("/auth/session")
-def check_session(current_uid: str = Depends(get_current_uid)):
-    return {"uid": current_uid}
+def check_session(request : Request):
+    token = request.cookies.get("session")
+    if not token:
+        raise HTTPException(status_code=401, detail="Session Expired")
+    return verifySessionToken(token)

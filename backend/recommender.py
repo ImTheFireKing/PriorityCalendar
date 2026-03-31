@@ -117,7 +117,7 @@ def event_recommender(altExistence : list[Day], today : Day, eventLimit : int = 
         for day in altExistence:
             for event in day.dayEvents:
                 dumList.append((compute_event_score(event, today), event))
-    else:
+    else: 
         dumList = []
         addedEvents = 0
         for day in altExistence:

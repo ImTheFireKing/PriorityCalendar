@@ -126,7 +126,7 @@ class Major(Task):
                 raise TypeError
         except TypeError:
             return "Error: Tried to grab exam difficulty for a project"
-    def setProjectAttributes(self, projectCollaboration : bool):
+    def setProjectAttributes(self, projectCollaboration : bool = False):
         try:
             if self.getType() == "project":
                 self.projectType = projectCollaboration
@@ -299,3 +299,4 @@ class User:
         self.settings["Elimit"] = 3
         self.settings["expired"] = 2
         self.uid = uid
+        # This lowkey isn't used at all; just used to show the frame for users
