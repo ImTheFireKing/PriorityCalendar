@@ -15,7 +15,7 @@ app = FastAPI()
 app.include_router(authRouter)
 
 origins = [
-    "http://localhost:5173"
+    "http://localhost:5173",
     "https://priority-calendar-trial-p3ns.vercel.app"
 ]
 
