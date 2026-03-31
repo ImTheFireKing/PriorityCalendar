@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useGoogleLogin } from '@react-oauth/google';
+import { api } from '../api';
 import Nav from '../components/Nav';
 import './Landing.css';
 
@@ -24,7 +25,7 @@ export default function Landing() {
   const navigate = useNavigate();
 
   const handleGoogleSuccess = async (credentialResponse) => {
-    const res = await fetch('/api/auth/google', {
+    const res = await fetch(api('/api/auth/google'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',

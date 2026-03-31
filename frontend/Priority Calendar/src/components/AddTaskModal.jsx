@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { api } from '../api';
 import './Modal.css';
 
 // Maps your professional UI terms to your specific backend strings
@@ -59,7 +60,7 @@ export default function AddTaskModal({ isOpen, onClose, uid, onTaskAdded, pendin
   const loadPending = async () => {
     setCanvasLoading(true);
     try {
-      const res = await fetch(`/api/users/${uid}/canvas/pending`, { credentials: 'include' });
+      const res = await fetch(api(`/api/users/${uid}/canvas/pending`), { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setPendingTasks(data.pending);
@@ -90,7 +91,7 @@ export default function AddTaskModal({ isOpen, onClose, uid, onTaskAdded, pendin
     if (!backendDate) return;
 
     let special = cSpecial || null;
-    await fetch(`/api/users/${uid}/canvas/confirm`, {
+    await fetch(api(`/api/users/${uid}/canvas/confirm`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -108,7 +109,7 @@ export default function AddTaskModal({ isOpen, onClose, uid, onTaskAdded, pendin
 
   const handleDismiss = async () => {
     if (!selectedPending) return;
-    await fetch(`/api/users/${uid}/canvas/pending/${selectedPending.canvasId}`, {
+    await fetch(api(`/api/users/${uid}/canvas/pending/${selectedPending.canvasId}`), {
       method: 'DELETE',
       credentials: 'include',
     });
@@ -116,7 +117,7 @@ export default function AddTaskModal({ isOpen, onClose, uid, onTaskAdded, pendin
   };
 
   const afterAction = async () => {
-    const res = await fetch(`/api/users/${uid}/canvas/pending`, { credentials: 'include' });
+    const res = await fetch(api(`/api/users/${uid}/canvas/pending`), { credentials: 'include' });
     if (res.ok) {
       const data = await res.json();
       setPendingTasks(data.pending);
@@ -136,8 +137,8 @@ export default function AddTaskModal({ isOpen, onClose, uid, onTaskAdded, pendin
     const formattedDate = `${month}-${day}-${year}`;
 
     const endpoint = taskType === 'event'
-      ? `/api/users/${uid}/events?name=${encodeURIComponent(name)}`
-      : `/api/users/${uid}/tasks?taskName=${encodeURIComponent(name)}`;
+      ? api(`/api/users/${uid}/events?name=${encodeURIComponent(name)}`)
+      : api(`/api/users/${uid}/tasks?taskName=${encodeURIComponent(name)}`);
 
     try {
       const checkRes = await fetch(endpoint, { credentials: 'include' });
@@ -152,7 +153,7 @@ export default function AddTaskModal({ isOpen, onClose, uid, onTaskAdded, pendin
     if (taskType === 'event') {
       const payload = { name, date: formattedDate, isImportant, needsPrep };
       try {
-        const response = await fetch(`/api/users/${uid}/events`, {
+        const response = await fetch(api(`/api/users/${uid}/events`), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -176,7 +177,7 @@ export default function AddTaskModal({ isOpen, onClose, uid, onTaskAdded, pendin
     };
 
     try {
-      const response = await fetch(`/api/users/${uid}/tasks`, {
+      const response = await fetch(api(`/api/users/${uid}/tasks`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

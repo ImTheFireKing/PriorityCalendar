@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { api } from "../api";
 import "./TaskCard.css";
 
 const difficultyDisplayMap = {
@@ -33,7 +34,7 @@ export default function TaskCard({ data, isRec, uid, onRefresh }) {
   const [editImportant, setEditImportant]   = useState(data.importance ?? false);
 
   const handleMarkProgress = async () => {
-    await fetch(`/api/users/${uid}/tasks`, {
+    await fetch(api(`/api/users/${uid}/tasks`), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ taskName: data.name, percentChange: customPercent }),
@@ -46,7 +47,7 @@ export default function TaskCard({ data, isRec, uid, onRefresh }) {
   const handleEditSave = async () => {
     const backendDate = toBackendDate(editDate);
     if (isEvent) {
-      await fetch(`/api/users/${uid}/events`, {
+      await fetch(api(`/api/users/${uid}/events`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -58,7 +59,7 @@ export default function TaskCard({ data, isRec, uid, onRefresh }) {
         credentials: "include",
       });
     } else {
-      await fetch(`/api/users/${uid}/tasks`, {
+      await fetch(api(`/api/users/${uid}/tasks`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -80,7 +81,7 @@ export default function TaskCard({ data, isRec, uid, onRefresh }) {
     const body = isEvent ? { name: data.name } : { taskName: data.name };
 
     try {
-      const res = await fetch(`/api/users/${uid}/${endpoint}`, {
+      const res = await fetch(api(`/api/users/${uid}/${endpoint}`), {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

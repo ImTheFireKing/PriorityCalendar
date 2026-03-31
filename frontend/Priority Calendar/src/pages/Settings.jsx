@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { api } from '../api';
 import Nav from '../components/Nav';
 import './Settings.css';
 
@@ -33,8 +34,6 @@ function parseExpiry(raw) {
 export default function Settings() {
   const navigate = useNavigate();
   const uid = localStorage.getItem('pc_uid');
-  const apiUrl = '/api';
-
   const [lazyDays, setLazyDays] = useState([]);
   const [tLimit,   setTLimit]   = useState(15);
   const [eLimit,   setELimit]   = useState(3);
@@ -58,10 +57,10 @@ export default function Settings() {
     const fetchAll = async () => {
       try {
         const [lazyRes, tRes, eRes, expRes] = await Promise.all([
-          fetch(`${apiUrl}/users/${uid}/settings?settingField=lazy`, {credentials: "include"}),
-          fetch(`${apiUrl}/users/${uid}/settings?settingField=Tlimit`, {credentials: "include"}),
-          fetch(`${apiUrl}/users/${uid}/settings?settingField=Elimit`, {credentials: "include"}),
-          fetch(`${apiUrl}/users/${uid}/settings?settingField=expired`, {credentials: "include"}),
+          fetch(api(`/api/users/${uid}/settings?settingField=lazy`), {credentials: "include"}),
+          fetch(api(`/api/users/${uid}/settings?settingField=Tlimit`), {credentials: "include"}),
+          fetch(api(`/api/users/${uid}/settings?settingField=Elimit`), {credentials: "include"}),
+          fetch(api(`/api/users/${uid}/settings?settingField=expired`), {credentials: "include"}),
         ]);
         if (lazyRes.ok) setLazyDays(await lazyRes.json());
         if (tRes.ok)    setTLimit(await tRes.json());
@@ -87,7 +86,7 @@ export default function Settings() {
     setCanvasLoading(true);
     setCanvasStatus(null);
     try {
-      const res = await fetch(`${apiUrl}/users/${uid}/canvas/connect`, {
+      const res = await fetch(api(`/api/users/${uid}/canvas/connect`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -105,7 +104,7 @@ export default function Settings() {
     setIcsLoading(true);
     setIcsStatus(null);
     try {
-      const res = await fetch(`${apiUrl}/users/${uid}/canvas/connect/ics`, {
+      const res = await fetch(api(`/api/users/${uid}/canvas/connect/ics`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -127,7 +126,7 @@ export default function Settings() {
 
   const handleSave = async () => {
     try {
-      const res = await fetch(`${apiUrl}/users/${uid}/settings`, {
+      const res = await fetch(api(`/api/users/${uid}/settings`), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

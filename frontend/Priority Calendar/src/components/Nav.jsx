@@ -1,4 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { api } from '../api';
 import './Nav.css';
 import logo from '../assets/PriorityCalendarSmallLogoTransparent.png';
 
@@ -10,7 +11,7 @@ export default function Nav({ onAuthTrigger }) {
   const isDashboard = DASHBOARD_PATHS.some(p => location.pathname.startsWith(p));
 
   const handleLogOut = () => {
-    fetch('/api/auth/logout', {
+    fetch(api('/api/auth/logout'), {
       method: 'POST',
       credentials: 'include',
     });

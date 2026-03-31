@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { api } from '../api';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import Shepherd from 'shepherd.js';
@@ -99,7 +100,6 @@ export default function Dashboard() {
   const [pendingCanvasCount, setPendingCanvasCount] = useState(0);
   const [isSyncing, setIsSyncing]         = useState(false);
 
-  const apiUrl    = '/api';
   const DAY_TO_JS = { Su: 0, Mo: 1, Tu: 2, Wed: 3, Th: 4, F: 5, Sa: 6 };
 
   const fetchDashboardData = useCallback(async () => {
@@ -117,7 +117,7 @@ export default function Dashboard() {
       return `${m}-${d}-${y}`;
     };
 
-    const settingsRes = await fetch(`${apiUrl}/users/${uid}/settings?settingField=lazy`, {
+    const settingsRes = await fetch(api(`/api/users/${uid}/settings?settingField=lazy`), {
       credentials: 'include',
     });
     if (settingsRes.ok) {
@@ -128,7 +128,7 @@ export default function Dashboard() {
     try {
       const dateStr  = formatForBackend(selectedDate);
 
-      const schedRes = await fetch(`${apiUrl}/users/${uid}/schedule/${dateStr}`, {
+      const schedRes = await fetch(api(`/api/users/${uid}/schedule/${dateStr}`), {
         credentials: 'include',
       });
       if (schedRes.ok) {
@@ -136,7 +136,7 @@ export default function Dashboard() {
         setSchedule(schedData);
       }
 
-      const recsRes = await fetch(`${apiUrl}/users/${uid}/recommendations`, {
+      const recsRes = await fetch(api(`/api/users/${uid}/recommendations`), {
         credentials: 'include',
       });
       if (recsRes.ok) {
@@ -145,7 +145,7 @@ export default function Dashboard() {
         setHadTasksOnLoad(recsData.tasks.length > 0);
       }
 
-      const pendingRes = await fetch(`${apiUrl}/users/${uid}/canvas/pending`, {
+      const pendingRes = await fetch(api(`/api/users/${uid}/canvas/pending`), {
         credentials: 'include',
       });
       if (pendingRes.ok) {
@@ -170,7 +170,7 @@ export default function Dashboard() {
 
     const checkSyncStatus = async () => {
       try {
-        const res = await fetch(`${apiUrl}/users/${uid}/canvas/status`, {
+        const res = await fetch(api(`/api/users/${uid}/canvas/status`), {
           credentials: 'include',
         });
         if (res.ok) {
@@ -198,7 +198,7 @@ export default function Dashboard() {
 
     try {
       // Fixed string interpolation here
-      const res = await fetch(`${apiUrl}/users/${uid}/canvas/pending`, {
+      const res = await fetch(api(`/api/users/${uid}/canvas/pending`), {
         method : 'DELETE',
         credentials: 'include'
       });
@@ -213,7 +213,7 @@ export default function Dashboard() {
 
   const fetchMoreRecs = async () => {
     try {
-      const res = await fetch(`${apiUrl}/users/${uid}/recommendations`, {
+      const res = await fetch(api(`/api/users/${uid}/recommendations`), {
         credentials: 'include',
       });
       if (res.ok) {

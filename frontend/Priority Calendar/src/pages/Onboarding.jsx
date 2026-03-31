@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { api } from '../api';
 import './Onboarding.css';
 
 const DAY_LABELS = [
@@ -42,7 +43,7 @@ export default function Onboarding() {
     setSaving(true);
     try {
       // Save settings first
-      await fetch(`/api/users/${uid}/settings`, {
+      await fetch(api(`/api/users/${uid}/settings`), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -54,7 +55,7 @@ export default function Onboarding() {
         }),
       });
       // Mark onboarded (refreshes session cookie)
-      await fetch(`/api/users/${uid}/onboarding`, {
+      await fetch(api(`/api/users/${uid}/onboarding`), {
         method: 'POST',
         credentials: 'include',
       });
