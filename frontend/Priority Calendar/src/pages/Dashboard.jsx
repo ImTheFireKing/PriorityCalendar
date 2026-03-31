@@ -166,6 +166,8 @@ export default function Dashboard() {
   useEffect(() => {
     if (!uid) return;
 
+    let intervalId;
+
     const checkSyncStatus = async () => {
       try {
         const res = await fetch(`${apiUrl}/users/${uid}/canvas/status`, {
@@ -174,21 +176,19 @@ export default function Dashboard() {
         if (res.ok) {
           const data = await res.json();
           setIsSyncing(prevSyncing => {
-            // If it just stopped syncing, trigger a data refresh to grab the new Canvas count
-            if (prevSyncing && !data.syncStatus) {
-              fetchDashboardData();
-            }
+            if (prevSyncing && !data.syncStatus) fetchDashboardData();
             return data.syncStatus;
           });
+          // Stop polling once sync is done
+          if (!data.syncStatus) clearInterval(intervalId);
         }
       } catch (err) {
         console.error("Failed to check sync status", err);
       }
     };
 
-    // Check immediately, then poll every 3 seconds
     checkSyncStatus();
-    const intervalId = setInterval(checkSyncStatus, 3000);
+    intervalId = setInterval(checkSyncStatus, 3000);
     return () => clearInterval(intervalId);
   }, [uid, fetchDashboardData]);
 
