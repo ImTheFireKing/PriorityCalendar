@@ -1,6 +1,6 @@
 fastapi;
 uvicorn[standard];
-pymongo[srv];
+pymongo[srv]==3.12;
 python-dotenv;
 requests;
 httpx;

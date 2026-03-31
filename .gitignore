@@ -3,4 +3,4 @@
 __pycache__/
 migrate.py
 pymongoisabitch.py
-.venv
+venv/
