@@ -90,6 +90,11 @@
   overflow: hidden;
 }
 
+img.feature-img {
+  object-fit: cover;
+  display: block;
+}
+
 .feature-img--noise::after {
   content: '';
   position: absolute;

@@ -84,6 +84,7 @@ export default function TaskCard({ data, isRec, uid, onRefresh }) {
       const res = await fetch(api(`/api/users/${uid}/${endpoint}`), {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(body),
       });
 

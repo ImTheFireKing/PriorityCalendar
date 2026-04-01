@@ -2,6 +2,19 @@
   min-height: 100vh;
 }
 
+.changelog-github {
+  align-self: flex-end;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+}
+
+.changelog-github:hover {
+  opacity: 1;
+}
+
 .changelog-content {
   display: flex;
   flex-direction: column;
