@@ -1,8 +1,31 @@
 import re
+import socket
+import ipaddress
+from urllib.parse import urlparse
 import httpx
 import datetime as dTime
 import pcStorage
 import pcClasses
+
+_PRIVATE_RANGES = [
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("169.254.0.0/16"),
+    ipaddress.ip_network("::1/128"),
+    ipaddress.ip_network("fc00::/7"),
+]
+
+def validateExternalUrl(url: str) -> bool:
+    if not url.startswith("https://"):
+        return False
+    try:
+        hostname = urlparse(url).hostname
+        ip = ipaddress.ip_address(socket.gethostbyname(hostname))
+        return not any(ip in net for net in _PRIVATE_RANGES)
+    except Exception:
+        return False
 
 KEYWORD_MAP = {
     "exam":    ["exam", "midterm", "final"],
@@ -96,7 +119,9 @@ def syncUser(uid: str):
                     pass
 
             task_type   = _inferType(name, a.get("submission_types", []))
-            description = _stripHtml(a.get("description") or "")[:500]
+            description = _stripHtml(a.get("description") or "")
+            if len(description) > 400:
+                description = description[:400] + " (See More on Canvas)"
 
             new_pending.append({
                 "canvasId":    canvas_id,
@@ -118,6 +143,9 @@ def syncUserIcs(uid: str):
         return
     ics_url = user.get("canvasIcsUrl")
     if not ics_url:
+        return
+
+    if not validateExternalUrl(ics_url):
         return
 
     today = dTime.date.today()
@@ -167,7 +195,9 @@ def syncUserIcs(uid: str):
                 continue
             due_date_str = _formatDueDate(due_dt)
 
-        description = _stripHtml(str(component.get("DESCRIPTION") or ""))[:500]
+        description = _stripHtml(str(component.get("DESCRIPTION") or ""))
+        if len(description) > 400:
+            description = description[:400] + " (See More on Canvas)"
         task_type   = _inferType(name, [])
 
         new_pending.append({

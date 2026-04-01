@@ -1,6 +1,6 @@
 from fastapi import FastAPI, APIRouter
 from fastapi import HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import main
 import pcStorage
 import datetime as dTime
@@ -8,11 +8,27 @@ from datetime import datetime
 from fastapi.middleware.cors import CORSMiddleware
 from auth import router as authRouter
 from auth import get_current_uid
+from canvas import validateExternalUrl
 from fastapi import Depends
 from fastapi import Response
 
 app = FastAPI()
 router = APIRouter(prefix="/api")
+
+CANVAS_COOLDOWN_SECONDS = 300  # 5 minutes
+
+def _validateYear(year_str: str, allow_past: bool = False):
+    try:
+        year = int(year_str)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date")
+    current = datetime.now().year
+    if allow_past:
+        if year not in (current - 1, current, current + 1):
+            raise HTTPException(status_code=400, detail="Date out of allowed range (±1 year from today)")
+    else:
+        if year not in (current, current + 1):
+            raise HTTPException(status_code=400, detail="Tasks/events can only be added for the current or next year")
 
 origins = [
     "http://localhost:5173",
@@ -28,7 +44,7 @@ app.add_middleware(
 )
 # Section 1: Tasks
 class CreateTask(BaseModel):
-    name : str
+    name : str = Field(..., max_length=150)
     date : str
     taskType : str
     special : str | None = None
@@ -37,7 +53,10 @@ class CreateTask(BaseModel):
 def createTask(uid : str, dataGiven : CreateTask, currentUid : str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, details="Forbidden Resources")
+    if len(pcStorage.getTasks(uid)) >= 250:
+        raise HTTPException(status_code=400, detail="Task limit reached (250 max)")
     # MM-DD-YYYY
+    _validateYear(dataGiven.date[6:])
     calendar = pcStorage.getCalendar(uid, dataGiven.date[6:])
     newTask = main.createTask(uid, dataGiven.name, dataGiven.date, dataGiven.taskType, calendar, dataGiven.alreadyDone)
     if dataGiven.special:
@@ -129,7 +148,7 @@ def deleteTask(uid : str, dataGiven : DeleteTask, currentUid : str = Depends(get
 # Section 2: Events
 
 class CreateEvent(BaseModel):
-    name : str
+    name : str = Field(..., max_length=150)
     date : str
     needsPrep : bool  = False
     isImportant : bool  = False
@@ -138,6 +157,9 @@ class CreateEvent(BaseModel):
 def createEvent(uid : str, dataGiven : CreateEvent, currentUid : str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
+    if len(pcStorage.getEvents(uid)) >= 250:
+        raise HTTPException(status_code=400, detail="Event limit reached (250 max)")
+    _validateYear(dataGiven.date[6:])
     calendar = pcStorage.getCalendar(uid, dataGiven.date[6:])
     main.createEvent(uid, dataGiven.name, dataGiven.date, calendar, dataGiven.needsPrep, dataGiven.isImportant)
     return {"status" : "ok"}
@@ -263,6 +285,7 @@ def getDailySchedule(uid : str, dateString: str, currentUid : str = Depends(get_
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
     year = dateString[6:]
+    _validateYear(year, allow_past=True)
     calendar = pcStorage.getCalendar(uid, year)
     
     target_date = dTime.datetime.strptime(dateString, "%m-%d-%Y").date()
@@ -330,7 +353,7 @@ def markOnboarded(uid: str, response : Response, currentUid : str = Depends(get_
     if pcStorage.onboardUser(uid):
         from auth import createSessionToken, SESSION_HOURS
         newToken = createSessionToken(uid, True)
-        response.set_cookie(key="session", value=newToken, httponly=True, secure=False, samesite="lax", max_age=SESSION_HOURS * 3600, path="/")
+        response.set_cookie(key="session", value=newToken, httponly=True, secure=True, samesite="lax", max_age=SESSION_HOURS * 3600, path="/")
         return {"status" : "ok"}
     else:
         raise HTTPException(status_code=404, detail="Error: User could not be found somehow?")
@@ -343,6 +366,14 @@ class CanvasConnect(BaseModel):
 def connectCanvas(uid: str, body: CanvasConnect, currentUid: str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
+    last = pcStorage.getCanvasConnectTime(uid)
+    if last:
+        elapsed = (datetime.now(dTime.timezone.utc) - datetime.fromisoformat(last)).total_seconds()
+        if elapsed < CANVAS_COOLDOWN_SECONDS:
+            remaining = int(CANVAS_COOLDOWN_SECONDS - elapsed)
+            raise HTTPException(status_code=429, detail=f"Please wait {remaining}s before reconnecting Canvas")
+    if not validateExternalUrl(body.institutionalUrl):
+        raise HTTPException(status_code=400, detail="Invalid or disallowed URL")
     import httpx as _httpx
     test = _httpx.get(
         f"{body.institutionalUrl.rstrip('/')}/api/v1/users/self",
@@ -351,6 +382,7 @@ def connectCanvas(uid: str, body: CanvasConnect, currentUid: str = Depends(get_c
     if test.status_code != 200:
         raise HTTPException(status_code=400, detail="Canvas token invalid or URL incorrect")
     pcStorage.storeCanvasCredentials(uid, body.token, body.institutionalUrl)
+    pcStorage.storeCanvasConnectTime(uid)
     import threading, canvas
     threading.Thread(target=canvas.syncUser, args=(uid,), daemon=True).start()
     return {"status": "ok"}
@@ -362,6 +394,14 @@ class CanvasIcsConnect(BaseModel):
 def connectCanvasIcs(uid: str, body: CanvasIcsConnect, currentUid: str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
+    last = pcStorage.getCanvasConnectTime(uid)
+    if last:
+        elapsed = (datetime.now(dTime.timezone.utc) - datetime.fromisoformat(last)).total_seconds()
+        if elapsed < CANVAS_COOLDOWN_SECONDS:
+            remaining = int(CANVAS_COOLDOWN_SECONDS - elapsed)
+            raise HTTPException(status_code=429, detail=f"Please wait {remaining}s before reconnecting Canvas")
+    if not validateExternalUrl(body.icsUrl):
+        raise HTTPException(status_code=400, detail="Invalid or disallowed URL")
     import httpx as _httpx
     try:
         test = _httpx.get(body.icsUrl, timeout=8, follow_redirects=True)
@@ -370,6 +410,7 @@ def connectCanvasIcs(uid: str, body: CanvasIcsConnect, currentUid: str = Depends
     if test.status_code != 200 or "BEGIN:VCALENDAR" not in test.text[:200]:
         raise HTTPException(status_code=400, detail="URL does not appear to be a valid Canvas ICS feed")
     pcStorage.storeCanvasIcsUrl(uid, body.icsUrl)
+    pcStorage.storeCanvasConnectTime(uid)
     import threading, canvas
     threading.Thread(target=canvas.syncUserIcs, args=(uid,), daemon=True).start()
     return {"status": "ok"}
@@ -391,7 +432,7 @@ def getPendingCanvasTasks(uid: str, currentUid: str = Depends(get_current_uid)):
 
 class ConfirmCanvasTask(BaseModel):
     canvasId : str
-    name     : str
+    name     : str = Field(..., max_length=150)
     date     : str          # MM-DD-YYYY
     taskType : str
     special  : str | None = None
@@ -400,6 +441,9 @@ class ConfirmCanvasTask(BaseModel):
 def confirmCanvasTask(uid: str, body: ConfirmCanvasTask, currentUid: str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
+    if len(pcStorage.getTasks(uid)) >= 250:
+        raise HTTPException(status_code=400, detail="Task limit reached (250 max)")
+    _validateYear(body.date[6:])
     calendar = pcStorage.getCalendar(uid, body.date[6:])
     newTask = main.createTask(uid, body.name, body.date, body.taskType, calendar, 0.0)
     if body.special:
