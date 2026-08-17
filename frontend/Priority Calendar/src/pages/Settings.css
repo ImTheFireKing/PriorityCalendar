@@ -327,6 +327,83 @@
   white-space: nowrap;
 }
 
+/* ── Danger Zone ── */
+.danger-section {
+  border-top: 2px solid rgba(180, 40, 40, 0.18);
+  padding-top: 24px;
+  margin-top: 8px;
+}
+
+.danger-section h3 { color: #b42828; }
+
+.danger-btn {
+  background: none;
+  border: 1.5px solid #b42828;
+  color: #b42828;
+  border-radius: 20px;
+  padding: 7px 22px;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.danger-btn:hover { opacity: 0.65; }
+
+.danger-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.danger-warning {
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  color: #b42828;
+  margin: 0;
+  opacity: 0.85;
+}
+
+.danger-confirm-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.danger-cancel-btn {
+  background: none;
+  border: 1.5px solid var(--text-primary);
+  color: var(--text-primary);
+  border-radius: 20px;
+  padding: 7px 22px;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.15s ease;
+}
+
+.danger-cancel-btn:hover:not(:disabled) { opacity: 0.85; }
+.danger-cancel-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+
+.danger-confirm-btn {
+  background: none;
+  border: 1.5px solid #b42828;
+  color: #b42828;
+  border-radius: 20px;
+  padding: 7px 22px;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.danger-confirm-btn:hover:not(:disabled) { opacity: 0.65; }
+.danger-confirm-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
 /* ── Mobile ── */
 @media (max-width: 600px) {
   .settings-main {

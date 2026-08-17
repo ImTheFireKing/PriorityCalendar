@@ -61,6 +61,10 @@ export default function Settings() {
   const [icsOpen,    setIcsOpen]    = useState(false);
   const [icsCooldownMsg, setIcsCooldownMsg] = useState('');
 
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError,   setDeleteError]   = useState(false);
+
   useEffect(() => {
     if (!uid) { navigate('/login'); return; }
 
@@ -142,6 +146,28 @@ export default function Settings() {
       setIcsStatus('error');
     } finally {
       setIcsLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeleteLoading(true);
+    setDeleteError(false);
+    try {
+      const res = await fetch(api(`/api/users/${uid}`), {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        localStorage.removeItem('pc_uid');
+        localStorage.removeItem('pc_theme');
+        navigate('/');
+      } else {
+        setDeleteError(true);
+      }
+    } catch {
+      setDeleteError(true);
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -349,6 +375,42 @@ export default function Settings() {
                 </button>
               ))}
             </div>
+          </section>
+
+          {/* ── Danger Zone ── */}
+          <section className="settings-section danger-section">
+            <h3>Danger Zone</h3>
+            <p className="settings-desc">
+              Permanently delete your account and all associated data. This cannot be undone.
+            </p>
+            {!deleteConfirm ? (
+              <button className="danger-btn" onClick={() => setDeleteConfirm(true)}>
+                Delete Account
+              </button>
+            ) : (
+              <div className="danger-confirm">
+                <p className="danger-warning">
+                  Are you sure? All your tasks, events, and settings will be deleted forever.
+                </p>
+                <div className="danger-confirm-actions">
+                  <button
+                    className="danger-cancel-btn"
+                    onClick={() => { setDeleteConfirm(false); setDeleteError(false); }}
+                    disabled={deleteLoading}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="danger-confirm-btn"
+                    onClick={handleDeleteAccount}
+                    disabled={deleteLoading}
+                  >
+                    {deleteLoading ? 'Deleting…' : 'Yes, delete my account'}
+                  </button>
+                </div>
+                {deleteError && <span className="status-error">Something went wrong. Please try again.</span>}
+              </div>
+            )}
           </section>
 
           <div className="settings-actions">
