@@ -253,7 +253,7 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    if (!uid) { navigate('/login'); return; }
+    if (!uid) { navigate('/'); return; }
     fetchDashboardData();
     fetchDensity(new Date());
   }, [uid, navigate, fetchDashboardData, fetchDensity]);
