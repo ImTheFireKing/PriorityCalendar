@@ -243,3 +243,31 @@
 .onboarding-step--final .onboarding-actions {
   justify-content: center;
 }
+
+/* ── Mobile ── */
+@media (max-width: 600px) {
+  .onboarding-card {
+    padding: 32px 20px;
+  }
+
+  .onboarding-step h1 {
+    font-size: 1.5rem;
+  }
+
+  .onboarding-step h2 {
+    font-size: 1.25rem;
+  }
+
+  .day-toggles {
+    gap: 6px;
+  }
+
+  .day-toggle {
+    padding: 5px 12px;
+    font-size: 0.82rem;
+  }
+
+  .onboarding-limits select {
+    width: 100%;
+  }
+}

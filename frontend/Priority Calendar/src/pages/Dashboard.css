@@ -1,11 +1,3 @@
-/* ── Peach theme tokens (add these to your global :root or index.css) ──
-   If you already have a :root block, just add these variables there.    */
-:root {
-  --peach-light:   #fff0e8;   /* soft warm background tint              */
-  --peach-mid:     #f7c8a8;   /* calendar tile highlights, dividers      */
-  --peach-warm:    #e8956d;   /* active states, section borders          */
-  --peach-deep:    #c9603a;   /* hover accents, strong emphasis          */
-}
 
 /* ═══════════════════════════════════════════
    PAGE
@@ -73,6 +65,23 @@
 .pc-calendar .react-calendar__tile:hover {
   background: var(--peach-mid);
   border-radius: 8px;
+}
+
+/* ── Calendar density dots ── */
+.day-dots {
+  display: flex;
+  justify-content: center;
+  gap: 3px;
+  margin-top: 2px;
+}
+
+.day-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--peach-deep);
+  opacity: 0.75;
 }
 
 /* Daily snapshot panel */
@@ -327,6 +336,10 @@
 }
 
 /* ── Shepherd tour theme ── */
+.shepherd-element.pc-shepherd {
+  width: 320px;
+}
+
 .pc-shepherd.shepherd-has-cancel-icon .shepherd-cancel-icon {
   color: var(--text-primary);
   opacity: 0.45;
@@ -338,7 +351,9 @@
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
   font-family: var(--font-body);
   border: 1.5px solid var(--peach-mid);
-  max-width: 320px;
+  width: 320px;
+  overflow: visible;
+  box-sizing: border-box;
 }
 
 .shepherd-element.pc-shepherd .shepherd-text {
@@ -347,6 +362,9 @@
   color: var(--text-primary);
   line-height: 1.55;
   padding: 16px 18px 8px;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
 }
 
 .shepherd-element.pc-shepherd .shepherd-text strong {
@@ -393,4 +411,49 @@
 .shepherd-element.pc-shepherd .shepherd-arrow::before {
   background: var(--peach-light);
   border-color: var(--peach-mid);
+}
+
+/* ── Mobile ── */
+@media (max-width: 600px) {
+  .dashboard-layout {
+    padding: 16px 12px;
+    gap: 16px;
+  }
+
+  .dashboard-sidebar {
+    width: 100%;
+  }
+
+  .pc-calendar {
+    padding: 10px;
+    font-size: 0.85rem;
+  }
+
+  .daily-snapshot {
+    padding: 14px 14px;
+  }
+
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .dashboard-controls {
+    width: 100%;
+  }
+
+  .add-btn {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+
+  .recommendations-hub {
+    padding: 0;
+  }
+
+  .shepherd-element.pc-shepherd .shepherd-content {
+    max-width: 280px;
+  }
 }

@@ -3,6 +3,24 @@ import './Changelog.css';
 
 const entries = [
   {
+    tag: 'The Overhaul Update',
+    date: 'August 17, 2026',
+    items: [
+      "Added visual quality updates to several app features.",
+      "Provided bonus clarification for Canvas Imports regarding the class an assignment belongs to.",
+      "Fixed issues with Shepherd prompts creating whitespace.",
+      "Limited year context range for adding assignments and viewing dates on the Calendar.",
+      "Ensured that date parsing is aware of Daylight Savings Time during Canvas sync and app logic.",
+      "Added a 24-hour cooldown to swapping Canvas iCalendar links and Canvas Access Tokens.",
+      "Fixed the log-in button on non-landing pages redirecting to the landing page.",
+      "Added a log-in screen during and after completing OAuth but before the page is loaded in.",
+      "Added alternate color palettes to the Dashboard.",
+      "Improved design to be Mobile-friendly.",
+      "Added the ability to add repeating tasks/events.",
+    ],
+  },
+  
+  {
     tag: 'The (Small) Launch Update',
     date: 'March 31, 2026',
     items: [

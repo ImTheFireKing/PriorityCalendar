@@ -1,7 +1,5 @@
-import { Link, useNavigate } from 'react-router-dom';
-import { useGoogleLogin } from '@react-oauth/google';
-import { api } from '../api';
 import Nav from '../components/Nav';
+import { useAuthTrigger } from '../hooks/useAuthTrigger';
 import './Landing.css';
 import recommendedImg from '../assets/recommended.png';
 import canvasDemoImg from '../assets/CanvasDemo.png';
@@ -23,32 +21,11 @@ const features = [
 ];
 
 export default function Landing() {
-  const navigate = useNavigate();
-
-  const handleGoogleSuccess = async (credentialResponse) => {
-    const res = await fetch(api('/api/auth/google'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ token: credentialResponse.access_token}),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      localStorage.setItem('pc_uid', data.uid);
-      navigate(data.onboarded ? '/dashboard' : '/onboarding');
-    }
-  };
-
-  // Programmatic Google popup — no visible Google button needed
-  const triggerGoogleLogin = useGoogleLogin({
-    onSuccess: handleGoogleSuccess,
-    onError: () => console.error('Google login failed'),
-    flow: 'implicit',
-  });
+  const { trigger: triggerGoogleLogin } = useAuthTrigger();
 
   return (
     <div className="landing">
-      <Nav onAuthTrigger={triggerGoogleLogin} />
+      <Nav />
 
       <section className="hero">
         <h1 className="hero-headline">
