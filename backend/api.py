@@ -31,14 +31,10 @@ def _validateYear(year_str: str, allow_past: bool = False):
         if year not in (current, current + 1):
             raise HTTPException(status_code=400, detail="Tasks/events can only be added for the current or next year")
 
-origins = [
-    "http://localhost:5173",
-    "https://priority-calendar-trial-p3ns.vercel.app"
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["http://localhost:5173"],
+    allow_origin_regex=r"https://[a-zA-Z0-9-]*prioritycalendar[a-zA-Z0-9-]*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
