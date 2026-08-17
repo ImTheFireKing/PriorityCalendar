@@ -3,6 +3,7 @@ from fastapi import HTTPException
 from pydantic import BaseModel, Field
 import main
 import pcStorage
+import httpx
 import datetime as dTime
 from datetime import datetime
 from fastapi.middleware.cors import CORSMiddleware
@@ -42,6 +43,22 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+MAX_TASKS  = 200
+MAX_EVENTS = 100
+
+def _validate_date(date_str: str):
+    """Validate MM-DD-YYYY date: must be >= today and within 2 years from now."""
+    try:
+        parsed = dTime.datetime.strptime(date_str, "%m-%d-%Y").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use MM-DD-YYYY.")
+    today = dTime.date.today()
+    max_date = dTime.date(today.year + 2, today.month, today.day)
+    if parsed < today:
+        raise HTTPException(status_code=400, detail="Date cannot be in the past.")
+    if parsed > max_date:
+        raise HTTPException(status_code=400, detail="Date cannot be more than 2 years in the future.")
+
 # Section 1: Tasks
 class CreateTask(BaseModel):
     name : str = Field(..., max_length=150)
@@ -53,8 +70,9 @@ class CreateTask(BaseModel):
 def createTask(uid : str, dataGiven : CreateTask, currentUid : str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, details="Forbidden Resources")
-    if len(pcStorage.getTasks(uid)) >= 250:
-        raise HTTPException(status_code=400, detail="Task limit reached (250 max)")
+    _validate_date(dataGiven.date)
+    if pcStorage.countTasks(uid) >= MAX_TASKS:
+        raise HTTPException(status_code=429, detail=f"Task limit reached ({MAX_TASKS}). Remove some tasks before adding more.")
     # MM-DD-YYYY
     _validateYear(dataGiven.date[6:])
     calendar = pcStorage.getCalendar(uid, dataGiven.date[6:])
@@ -62,6 +80,73 @@ def createTask(uid : str, dataGiven : CreateTask, currentUid : str = Depends(get
     if dataGiven.special:
         main.updateTask(newTask, "special", dataGiven.special, uid, calendar)
     return {"status" : "ok"}
+
+DAY_KEY_TO_WEEKDAY = { 'Mo': 0, 'Tu': 1, 'Wed': 2, 'Th': 3, 'F': 4, 'Sa': 5, 'Su': 6 }
+MAX_RECURRENCES = 365
+
+class CreateRepeatTask(BaseModel):
+    name:       str
+    taskType:   str
+    special:    str | None = None
+    startDate:  str   # MM-DD-YYYY
+    endDate:    str   # MM-DD-YYYY
+    repeatDays: list[str]  # ['Mo','Tu','Wed','Th','F','Sa','Su']
+
+@router.post("/users/{uid}/tasks/repeat")
+def createRepeatTask(uid: str, dataGiven: CreateRepeatTask, currentUid: str = Depends(get_current_uid)):
+    if uid != currentUid:
+        raise HTTPException(status_code=403, detail="Forbidden Resources")
+    if not dataGiven.repeatDays:
+        raise HTTPException(status_code=400, detail="At least one repeat day must be selected.")
+
+    try:
+        start = dTime.datetime.strptime(dataGiven.startDate, "%m-%d-%Y").date()
+        end   = dTime.datetime.strptime(dataGiven.endDate,   "%m-%d-%Y").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Dates must be in MM-DD-YYYY format.")
+
+    today = dTime.date.today()
+    max_date = dTime.date(today.year + 2, today.month, today.day)
+    if start < today:
+        raise HTTPException(status_code=400, detail="Start date cannot be in the past.")
+    if end > max_date:
+        raise HTTPException(status_code=400, detail="End date cannot be more than 2 years in the future.")
+    if end < start:
+        raise HTTPException(status_code=400, detail="End date must be on or after start date.")
+
+    target_weekdays = set()
+    for key in dataGiven.repeatDays:
+        if key not in DAY_KEY_TO_WEEKDAY:
+            raise HTTPException(status_code=400, detail=f"Unknown day key: {key}")
+        target_weekdays.add(DAY_KEY_TO_WEEKDAY[key])
+
+    occurrences = []
+    current = start
+    while current <= end and len(occurrences) < MAX_RECURRENCES:
+        if current.weekday() in target_weekdays:
+            occurrences.append(current)
+        current += dTime.timedelta(days=1)
+
+    if not occurrences:
+        raise HTTPException(status_code=400, detail="No matching dates found in the selected range.")
+
+    if pcStorage.countTasks(uid) + len(occurrences) > MAX_TASKS:
+        raise HTTPException(status_code=429, detail=f"Adding {len(occurrences)} tasks would exceed your task limit ({MAX_TASKS}).")
+
+    created = 0
+    for occ in occurrences:
+        date_str = f"{str(occ.month).zfill(2)}-{str(occ.day).zfill(2)}-{occ.year}"
+        task_name = f"{dataGiven.name} ({occ.strftime('%m/%d')})"
+        try:
+            calendar = pcStorage.getCalendar(uid, str(occ.year))
+            new_task = main.createTask(uid, task_name, date_str, dataGiven.taskType, calendar, 0.0)
+            if dataGiven.special and new_task:
+                main.updateTask(new_task, "special", dataGiven.special, uid, calendar)
+            created += 1
+        except Exception:
+            pass  # skip duplicate names silently
+
+    return {"status": "ok", "created": created}
 
 @router.get("/users/{uid}/tasks")
 def getTask(uid : str, taskName : str, currentUid : str = Depends(get_current_uid)):
@@ -157,9 +242,9 @@ class CreateEvent(BaseModel):
 def createEvent(uid : str, dataGiven : CreateEvent, currentUid : str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
-    if len(pcStorage.getEvents(uid)) >= 250:
-        raise HTTPException(status_code=400, detail="Event limit reached (250 max)")
-    _validateYear(dataGiven.date[6:])
+    _validate_date(dataGiven.date)
+    if pcStorage.countEvents(uid) >= MAX_EVENTS:
+        raise HTTPException(status_code=429, detail=f"Event limit reached ({MAX_EVENTS}). Remove some events before adding more.")
     calendar = pcStorage.getCalendar(uid, dataGiven.date[6:])
     main.createEvent(uid, dataGiven.name, dataGiven.date, calendar, dataGiven.needsPrep, dataGiven.isImportant)
     return {"status" : "ok"}
@@ -314,6 +399,39 @@ def getDailySchedule(uid : str, dateString: str, currentUid : str = Depends(get_
         }
 
 
+@router.get("/users/{uid}/density/{yearMonth}")
+def getMonthDensity(uid: str, yearMonth: str, currentUid: str = Depends(get_current_uid)):
+    """Return task+event counts per day for a given month. yearMonth = YYYY-MM."""
+    if uid != currentUid:
+        raise HTTPException(status_code=403, detail="Forbidden Resources")
+    try:
+        year, month = yearMonth.split("-")
+        year_int, month_int = int(year), int(month)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="yearMonth must be YYYY-MM")
+
+    calendar = pcStorage.getCalendar(uid, year)
+    start_of_year = dTime.date(year_int, 1, 1)
+    start_of_month = dTime.date(year_int, month_int, 1)
+    if month_int == 12:
+        end_of_month = dTime.date(year_int + 1, 1, 1) - dTime.timedelta(days=1)
+    else:
+        end_of_month = dTime.date(year_int, month_int + 1, 1) - dTime.timedelta(days=1)
+
+    density = {}
+    current = start_of_month
+    while current <= end_of_month:
+        idx = (current - start_of_year).days
+        if 0 <= idx < len(calendar):
+            day = calendar[idx]
+            count = len(day.getTasks()) + len(day.getEvents())
+            if count > 0:
+                key = f"{str(current.month).zfill(2)}-{str(current.day).zfill(2)}-{current.year}"
+                density[key] = count
+        current += dTime.timedelta(days=1)
+
+    return density
+
 @router.get("/users/{uid}/settings")
 def getSetting(uid : str, settingField : str, currentUid : str = Depends(get_current_uid)):
     if uid != currentUid:
@@ -362,20 +480,35 @@ class CanvasConnect(BaseModel):
     institutionalUrl : str
     token : str
 
+TOKEN_COOLDOWN_HOURS = 24
+
+def _check_token_cooldown(uid: str):
+    user = pcStorage.getUser(uid)
+    last_change = user.get("lastTokenChange") if user else None
+    if last_change:
+        try:
+            changed_at = dTime.datetime.fromisoformat(last_change)
+            if changed_at.tzinfo is None:
+                changed_at = changed_at.replace(tzinfo=dTime.timezone.utc)
+            elapsed = dTime.datetime.now(dTime.timezone.utc) - changed_at
+            remaining = dTime.timedelta(hours=TOKEN_COOLDOWN_HOURS) - elapsed
+            if remaining.total_seconds() > 0:
+                hours_left = int(remaining.total_seconds() // 3600) + 1
+                raise HTTPException(
+                    status_code=429,
+                    detail=f"Token cooldown active. Try again in {hours_left} hour(s)."
+                )
+        except HTTPException:
+            raise
+        except Exception:
+            pass
+
 @router.post("/users/{uid}/canvas/connect")
 def connectCanvas(uid: str, body: CanvasConnect, currentUid: str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
-    last = pcStorage.getCanvasConnectTime(uid)
-    if last:
-        elapsed = (datetime.now(dTime.timezone.utc) - datetime.fromisoformat(last)).total_seconds()
-        if elapsed < CANVAS_COOLDOWN_SECONDS:
-            remaining = int(CANVAS_COOLDOWN_SECONDS - elapsed)
-            raise HTTPException(status_code=429, detail=f"Please wait {remaining}s before reconnecting Canvas")
-    if not validateExternalUrl(body.institutionalUrl):
-        raise HTTPException(status_code=400, detail="Invalid or disallowed URL")
-    import httpx as _httpx
-    test = _httpx.get(
+    _check_token_cooldown(uid)
+    test = httpx.get(
         f"{body.institutionalUrl.rstrip('/')}/api/v1/users/self",
         headers={"Authorization": f"Bearer {body.token}"}, timeout=8
     )
@@ -394,17 +527,9 @@ class CanvasIcsConnect(BaseModel):
 def connectCanvasIcs(uid: str, body: CanvasIcsConnect, currentUid: str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
-    last = pcStorage.getCanvasConnectTime(uid)
-    if last:
-        elapsed = (datetime.now(dTime.timezone.utc) - datetime.fromisoformat(last)).total_seconds()
-        if elapsed < CANVAS_COOLDOWN_SECONDS:
-            remaining = int(CANVAS_COOLDOWN_SECONDS - elapsed)
-            raise HTTPException(status_code=429, detail=f"Please wait {remaining}s before reconnecting Canvas")
-    if not validateExternalUrl(body.icsUrl):
-        raise HTTPException(status_code=400, detail="Invalid or disallowed URL")
-    import httpx as _httpx
+    _check_token_cooldown(uid)
     try:
-        test = _httpx.get(body.icsUrl, timeout=8, follow_redirects=True)
+        test = httpx.get(body.icsUrl, timeout=8, follow_redirects=True)
     except Exception:
         raise HTTPException(status_code=400, detail="Could not reach that URL")
     if test.status_code != 200 or "BEGIN:VCALENDAR" not in test.text[:200]:
