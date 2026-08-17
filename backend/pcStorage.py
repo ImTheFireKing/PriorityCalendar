@@ -240,3 +240,14 @@ def storeCanvasIcsUrl(uid: str, icsUrl: str) -> bool:
                   "lastTokenChange": _dt.datetime.now(_dt.timezone.utc).isoformat()}}
     )
     return result.modified_count == 1
+
+def storeCanvasConnectTime(uid: str) -> bool:
+    result = users_collection.update_one(
+        {"uid": uid},
+        {"$set": {"lastCanvasConnect": datetime.now(dTime.timezone.utc).isoformat()}}
+    )
+    return result.modified_count == 1
+
+def getCanvasConnectTime(uid: str):
+    user = users_collection.find_one({"uid": uid}, {"lastCanvasConnect": 1})
+    return user.get("lastCanvasConnect") if user else None

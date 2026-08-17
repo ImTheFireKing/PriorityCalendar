@@ -1,4 +1,7 @@
 import re
+import socket
+import ipaddress
+from urllib.parse import urlparse
 import httpx
 import datetime as dTime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -109,7 +112,9 @@ def syncUser(uid: str):
                     pass
 
             task_type   = _inferType(name, a.get("submission_types", []))
-            description = _stripHtml(a.get("description") or "")[:500]
+            description = _stripHtml(a.get("description") or "")
+            if len(description) > 400:
+                description = description[:400] + " (See More on Canvas)"
 
             new_pending.append({
                 "canvasId":    canvas_id,
@@ -132,6 +137,9 @@ def syncUserIcs(uid: str):
     ics_url = user.get("canvasIcsUrl")
     user_tz = user.get("timezone", DEFAULT_TZ)
     if not ics_url:
+        return
+
+    if not validateExternalUrl(ics_url):
         return
 
     today = dTime.date.today()
@@ -188,7 +196,9 @@ def syncUserIcs(uid: str):
                 continue
             due_date_str = _formatDueDate(due_dt)
 
-        description = _stripHtml(str(component.get("DESCRIPTION") or ""))[:500]
+        description = _stripHtml(str(component.get("DESCRIPTION") or ""))
+        if len(description) > 400:
+            description = description[:400] + " (See More on Canvas)"
         task_type   = _inferType(name, [])
 
         new_pending.append({
