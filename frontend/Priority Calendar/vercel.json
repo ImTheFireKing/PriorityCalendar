@@ -1,12 +1,6 @@
 {
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "https://prioritycalendar.onrender.com/api/:path*"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
+  "routes": [
+    { "src": "/api/(.*)", "dest": "https://prioritycalendar.onrender.com/api/$1" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }

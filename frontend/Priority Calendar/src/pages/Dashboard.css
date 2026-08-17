@@ -336,6 +336,10 @@
 }
 
 /* ── Shepherd tour theme ── */
+.shepherd-element.pc-shepherd {
+  width: 320px;
+}
+
 .pc-shepherd.shepherd-has-cancel-icon .shepherd-cancel-icon {
   color: var(--text-primary);
   opacity: 0.45;

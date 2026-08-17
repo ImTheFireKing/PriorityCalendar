@@ -66,7 +66,7 @@ export default function Settings() {
   const [deleteError,   setDeleteError]   = useState(false);
 
   useEffect(() => {
-    if (!uid) { navigate('/login'); return; }
+    if (!uid) { navigate('/'); return; }
 
     const fetchAll = async () => {
       try {
