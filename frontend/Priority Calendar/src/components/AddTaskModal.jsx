@@ -161,6 +161,39 @@ export default function AddTaskModal({ isOpen, onClose, uid, onTaskAdded, pendin
     e.preventDefault();
     setSubmitError('');
 
+    // ── Repeating event path ──────────────────────────────────────────────
+    if (isRepeating && taskType === 'event') {
+      if (repeatDays.length === 0) { setSubmitError('Select at least one repeat day.'); return; }
+      if (!repeatStart || !repeatEnd)  { setSubmitError('Both start and end dates are required.'); return; }
+      if (repeatEnd < repeatStart)     { setSubmitError('End date must be on or after start date.'); return; }
+
+      const [sy, sm, sd] = repeatStart.split('-');
+      const [ey, em, ed] = repeatEnd.split('-');
+
+      try {
+        const res = await fetch(api(`/api/users/${uid}/events/repeat`), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            name,
+            isImportant,
+            needsPrep,
+            startDate: `${sm}-${sd}-${sy}`,
+            endDate:   `${em}-${ed}-${ey}`,
+            repeatDays,
+          }),
+        });
+        if (res.status === 429) { const d = await res.json(); setSubmitError(d.detail); return; }
+        if (!res.ok)            { setSubmitError('Failed to create repeating events.'); return; }
+        const data = await res.json();
+        if (data.created === 0) { setSubmitError('No matching dates found in that range.'); return; }
+        onTaskAdded();
+        handleClose();
+      } catch { setSubmitError('Network error. Please try again.'); }
+      return;
+    }
+
     // ── Repeating task path ───────────────────────────────────────────────
     if (isRepeating && taskType !== 'event') {
       if (repeatDays.length === 0) { setSubmitError('Select at least one repeat day.'); return; }
@@ -294,20 +327,18 @@ export default function AddTaskModal({ isOpen, onClose, uid, onTaskAdded, pendin
                 <span className="char-counter">{name.length}/100</span>
               </label>
 
-              {/* Repeat toggle — only for non-event types */}
-              {taskType !== 'event' && (
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={isRepeating}
-                    onChange={(e) => setIsRepeating(e.target.checked)}
-                  />
-                  Repeating Task?
-                </label>
-              )}
+              {/* Repeat toggle */}
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={isRepeating}
+                  onChange={(e) => setIsRepeating(e.target.checked)}
+                />
+                {taskType === 'event' ? 'Repeating Event?' : 'Repeating Task?'}
+              </label>
 
               {/* ── Repeat fields ── */}
-              {isRepeating && taskType !== 'event' ? (
+              {isRepeating ? (
                 <div className="repeat-fields">
                   <label className="repeat-days-label">Repeat on</label>
                   <div className="repeat-days">

@@ -76,6 +76,29 @@
   gap: 0.4rem;
 }
 
+/* ── Checkbox labels — inline row layout ── */
+.checkbox-label {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: var(--peach-warm);
+}
+
+.event-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
 /* ── Inputs & Selects ── */
 .modal-content input,
 .modal-content select {

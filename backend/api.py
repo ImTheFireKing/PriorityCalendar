@@ -144,6 +144,68 @@ def createRepeatTask(uid: str, dataGiven: CreateRepeatTask, currentUid: str = De
 
     return {"status": "ok", "created": created}
 
+class CreateRepeatEvent(BaseModel):
+    name:       str = Field(..., max_length=150)
+    needsPrep:  bool = False
+    isImportant: bool = False
+    startDate:  str
+    endDate:    str
+    repeatDays: list[str]
+
+@router.post("/users/{uid}/events/repeat")
+def createRepeatEvent(uid: str, dataGiven: CreateRepeatEvent, currentUid: str = Depends(get_current_uid)):
+    if uid != currentUid:
+        raise HTTPException(status_code=403, detail="Forbidden Resources")
+    if not dataGiven.repeatDays:
+        raise HTTPException(status_code=400, detail="At least one repeat day must be selected.")
+
+    try:
+        start = dTime.datetime.strptime(dataGiven.startDate, "%m-%d-%Y").date()
+        end   = dTime.datetime.strptime(dataGiven.endDate,   "%m-%d-%Y").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Dates must be in MM-DD-YYYY format.")
+
+    today = dTime.date.today()
+    max_date = dTime.date(today.year + 2, today.month, today.day)
+    if start < today:
+        raise HTTPException(status_code=400, detail="Start date cannot be in the past.")
+    if end > max_date:
+        raise HTTPException(status_code=400, detail="End date cannot be more than 2 years in the future.")
+    if end < start:
+        raise HTTPException(status_code=400, detail="End date must be on or after start date.")
+
+    target_weekdays = set()
+    for key in dataGiven.repeatDays:
+        if key not in DAY_KEY_TO_WEEKDAY:
+            raise HTTPException(status_code=400, detail=f"Unknown day key: {key}")
+        target_weekdays.add(DAY_KEY_TO_WEEKDAY[key])
+
+    occurrences = []
+    current = start
+    while current <= end and len(occurrences) < MAX_RECURRENCES:
+        if current.weekday() in target_weekdays:
+            occurrences.append(current)
+        current += dTime.timedelta(days=1)
+
+    if not occurrences:
+        raise HTTPException(status_code=400, detail="No matching dates found in the selected range.")
+
+    if pcStorage.countEvents(uid) + len(occurrences) > MAX_EVENTS:
+        raise HTTPException(status_code=429, detail=f"Adding {len(occurrences)} events would exceed your event limit ({MAX_EVENTS}).")
+
+    created = 0
+    for occ in occurrences:
+        date_str = f"{str(occ.month).zfill(2)}-{str(occ.day).zfill(2)}-{occ.year}"
+        event_name = f"{dataGiven.name} ({occ.strftime('%m/%d')})"
+        try:
+            calendar = pcStorage.getCalendar(uid, str(occ.year))
+            main.createEvent(uid, event_name, date_str, calendar, dataGiven.needsPrep, dataGiven.isImportant)
+            created += 1
+        except Exception:
+            pass
+
+    return {"status": "ok", "created": created}
+
 @router.get("/users/{uid}/tasks")
 def getTask(uid : str, taskName : str, currentUid : str = Depends(get_current_uid)):
     if uid != currentUid:
