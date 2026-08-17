@@ -16,6 +16,8 @@ from fastapi import Response
 app = FastAPI()
 router = APIRouter(prefix="/api")
 
+CANVAS_COOLDOWN_SECONDS = 300  # 5 minutes
+
 def _validateYear(year_str: str, allow_past: bool = False):
     try:
         year = int(year_str)
@@ -32,7 +34,7 @@ def _validateYear(year_str: str, allow_past: bool = False):
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],
-    allow_origin_regex=r"https://[a-zA-Z0-9-]*priority-?calendar[a-zA-Z0-9-]*\.vercel\.app",
+    allow_origin_regex=r"https://[a-zA-Z0-9-]*prioritycalendar[a-zA-Z0-9-]*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -502,8 +504,6 @@ def connectCanvas(uid: str, body: CanvasConnect, currentUid: str = Depends(get_c
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
     _check_token_cooldown(uid)
-    if not validateExternalUrl(body.institutionalUrl):
-        raise HTTPException(status_code=400, detail="Invalid or disallowed institution URL")
     test = httpx.get(
         f"{body.institutionalUrl.rstrip('/')}/api/v1/users/self",
         headers={"Authorization": f"Bearer {body.token}"}, timeout=8
@@ -562,9 +562,8 @@ class ConfirmCanvasTask(BaseModel):
 def confirmCanvasTask(uid: str, body: ConfirmCanvasTask, currentUid: str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
-    if pcStorage.countTasks(uid) >= MAX_TASKS:
-        raise HTTPException(status_code=429, detail=f"Task limit reached ({MAX_TASKS}). Remove some tasks before adding more.")
-    _validate_date(body.date)
+    if len(pcStorage.getTasks(uid)) >= 250:
+        raise HTTPException(status_code=400, detail="Task limit reached (250 max)")
     _validateYear(body.date[6:])
     calendar = pcStorage.getCalendar(uid, body.date[6:])
     newTask = main.createTask(uid, body.name, body.date, body.taskType, calendar, 0.0)
@@ -578,6 +577,14 @@ def dismissCanvasTask(uid: str, canvasId: str, currentUid: str = Depends(get_cur
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
     pcStorage.removePendingCanvasTask(uid, canvasId)
+    return {"status": "ok"}
+
+@router.delete("/users/{uid}")
+def deleteAccount(uid: str, response: Response, currentUid: str = Depends(get_current_uid)):
+    if uid != currentUid:
+        raise HTTPException(status_code=403, detail="Forbidden Resources")
+    pcStorage.delUser(uid)
+    response.delete_cookie("session", path="/")
     return {"status": "ok"}
 
 @router.delete("/users/{uid}/canvas/pending")
