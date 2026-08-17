@@ -579,6 +579,14 @@ def dismissCanvasTask(uid: str, canvasId: str, currentUid: str = Depends(get_cur
     pcStorage.removePendingCanvasTask(uid, canvasId)
     return {"status": "ok"}
 
+@router.delete("/users/{uid}")
+def deleteAccount(uid: str, response: Response, currentUid: str = Depends(get_current_uid)):
+    if uid != currentUid:
+        raise HTTPException(status_code=403, detail="Forbidden Resources")
+    pcStorage.delUser(uid)
+    response.delete_cookie("session", path="/")
+    return {"status": "ok"}
+
 @router.delete("/users/{uid}/canvas/pending")
 def clearCanvasChamber(uid : str, currentUid : str = Depends(get_current_uid)):
     if uid != currentUid:
