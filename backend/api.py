@@ -467,7 +467,7 @@ def markOnboarded(uid: str, response : Response, currentUid : str = Depends(get_
     if pcStorage.onboardUser(uid):
         from auth import createSessionToken, SESSION_HOURS
         newToken = createSessionToken(uid, True)
-        response.set_cookie(key="session", value=newToken, httponly=True, secure=True, samesite="lax", max_age=SESSION_HOURS * 3600, path="/")
+        response.set_cookie(key="session", value=newToken, httponly=True, secure=True, samesite="none", max_age=SESSION_HOURS * 3600, path="/")
         return {"status" : "ok"}
     else:
         raise HTTPException(status_code=404, detail="Error: User could not be found somehow?")
