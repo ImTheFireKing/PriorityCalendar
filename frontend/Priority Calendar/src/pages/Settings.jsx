@@ -41,15 +41,25 @@ export default function Settings() {
   const [loading,  setLoading]  = useState(true);
   const [saved,    setSaved]    = useState(false);
 
+  const [theme, setTheme] = useState(() => localStorage.getItem('pc_theme') || 'peach');
+
+  const handleThemeChange = (newTheme) => {
+    setTheme(newTheme);
+    localStorage.setItem('pc_theme', newTheme);
+    document.documentElement.setAttribute('data-theme', newTheme);
+  };
+
   const [canvasUrl,    setCanvasUrl]    = useState('');
   const [canvasToken,  setCanvasToken]  = useState('');
-  const [canvasStatus, setCanvasStatus] = useState(null); // 'ok' | 'error' | null
+  const [canvasStatus, setCanvasStatus] = useState(null); // 'ok' | 'error' | 'cooldown' | null
   const [canvasLoading, setCanvasLoading] = useState(false);
+  const [canvasCooldownMsg, setCanvasCooldownMsg] = useState('');
 
   const [icsUrl,     setIcsUrl]     = useState('');
-  const [icsStatus,  setIcsStatus]  = useState(null); // 'ok' | 'error' | null
+  const [icsStatus,  setIcsStatus]  = useState(null); // 'ok' | 'error' | 'cooldown' | null
   const [icsLoading, setIcsLoading] = useState(false);
   const [icsOpen,    setIcsOpen]    = useState(false);
+  const [icsCooldownMsg, setIcsCooldownMsg] = useState('');
 
   useEffect(() => {
     if (!uid) { navigate('/login'); return; }
@@ -92,7 +102,15 @@ export default function Settings() {
         credentials: 'include',
         body: JSON.stringify({ institutionalUrl: canvasUrl, token: canvasToken }),
       });
-      setCanvasStatus(res.ok ? 'ok' : 'error');
+      if (res.ok) {
+        setCanvasStatus('ok');
+      } else if (res.status === 429) {
+        const data = await res.json();
+        setCanvasCooldownMsg(data.detail || 'Token cooldown active. Try again later.');
+        setCanvasStatus('cooldown');
+      } else {
+        setCanvasStatus('error');
+      }
     } catch {
       setCanvasStatus('error');
     } finally {
@@ -110,9 +128,12 @@ export default function Settings() {
         credentials: 'include',
         body: JSON.stringify({ icsUrl: icsUrl }),
       });
-      
       if (res.ok) {
         setIcsStatus('ok');
+      } else if (res.status === 429) {
+        const data = await res.json();
+        setIcsCooldownMsg(data.detail || 'Token cooldown active. Try again later.');
+        setIcsStatus('cooldown');
       } else {
         setIcsStatus('error');
       }
@@ -274,6 +295,7 @@ export default function Settings() {
                   </button>
                   {canvasStatus === 'ok' && <span className="status-ok">Connected! Sync started.</span>}
                   {canvasStatus === 'error' && <span className="status-error">Failed — check URL/Token.</span>}
+                  {canvasStatus === 'cooldown' && <span className="status-error">{canvasCooldownMsg}</span>}
                 </div>
               </div>
             ) : (
@@ -298,10 +320,37 @@ export default function Settings() {
                   </button>
                   {icsStatus === 'ok' && <span className="status-ok">Feed Connected! Sync started.</span>}
                   {icsStatus === 'error' && <span className="status-error">Invalid URL or unreachable feed.</span>}
+                  {icsStatus === 'cooldown' && <span className="status-error">{icsCooldownMsg}</span>}
                 </div>
               </div>
             )}
           </section>
+          {/* ── Color Theme ── */}
+          <section className="settings-section">
+            <h3>Color Theme</h3>
+            <p className="settings-desc">Changes the site's color palette instantly.</p>
+            <div className="theme-swatches">
+              {[
+                { id: 'peach',     label: 'Peach',         color: '#f0d4b8' },
+                { id: 'maroon',    label: 'Maroon',        color: '#7a1a1a' },
+                { id: 'bw',        label: 'Black & White', color: '#111111' },
+                { id: 'lightblue', label: 'Light Blue',    color: '#4a90d9' },
+                { id: 'dark',      label: 'Dark',          color: '#1a1a1a' },
+              ].map(t => (
+                <button
+                  key={t.id}
+                  type="button"
+                  className={`theme-swatch${theme === t.id ? ' theme-swatch--active' : ''}`}
+                  onClick={() => handleThemeChange(t.id)}
+                  title={t.label}
+                >
+                  <span className="theme-swatch-dot" style={{ background: t.color }} />
+                  <span className="theme-swatch-label">{t.label}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+
           <div className="settings-actions">
             <button className="save-btn" onClick={handleSave}>
               {saved ? '✓ Saved!' : 'Save Changes'}

@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { useEffect } from 'react';
 import Landing from './pages/Landing';
 import About from './pages/About';
 import Changelog from './pages/Changelog';
@@ -8,6 +9,11 @@ import Settings from './pages/Settings';
 import Onboarding from './pages/Onboarding';
 
 export default function App() {
+  useEffect(() => {
+    const saved = localStorage.getItem('pc_theme') || 'peach';
+    document.documentElement.setAttribute('data-theme', saved);
+  }, []);
+
   return (
     <BrowserRouter>
       <Routes>

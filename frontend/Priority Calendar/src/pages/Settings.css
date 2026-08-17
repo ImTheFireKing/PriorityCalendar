@@ -272,9 +272,86 @@
 }
 
 .status-ok {
-  color: #4a9e6b; 
+  color: #4a9e6b;
 }
 
 .status-error {
-  color: #c9603a; 
+  color: #c9603a;
+}
+
+/* ── Theme Swatches ── */
+.theme-swatches {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.theme-swatch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: 1.5px solid var(--peach-warm);
+  border-radius: 20px;
+  padding: 5px 14px 5px 8px;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  opacity: 0.6;
+  transition: all 0.15s ease;
+}
+
+.theme-swatch:hover {
+  opacity: 0.9;
+}
+
+.theme-swatch--active {
+  opacity: 1;
+  border-color: var(--accent-deep);
+  background: var(--accent-mid);
+}
+
+.theme-swatch-dot {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(0,0,0,0.15);
+  flex-shrink: 0;
+}
+
+.theme-swatch-label {
+  white-space: nowrap;
+}
+
+/* ── Mobile ── */
+@media (max-width: 600px) {
+  .settings-main {
+    padding: 20px 12px;
+  }
+
+  .settings-card {
+    padding: 24px 18px;
+  }
+
+  .settings-row {
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .canvas-connect-fields input {
+    max-width: 100%;
+  }
+
+  .theme-swatches {
+    gap: 8px;
+  }
+
+  .theme-swatch {
+    font-size: 0.78rem;
+    padding: 4px 10px 4px 6px;
+  }
 }

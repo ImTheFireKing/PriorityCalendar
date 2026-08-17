@@ -99,8 +99,13 @@ export default function Dashboard() {
   const [hadTasksOnLoad, setHadTasksOnLoad] = useState(false);
   const [pendingCanvasCount, setPendingCanvasCount] = useState(0);
   const [isSyncing, setIsSyncing]         = useState(false);
+  const [densityMap, setDensityMap]       = useState({});
 
   const DAY_TO_JS = { Su: 0, Mo: 1, Tu: 2, Wed: 3, Th: 4, F: 5, Sa: 6 };
+
+  const _now = new Date();
+  const CAL_MIN_DATE = new Date(_now.getFullYear() - 1, _now.getMonth(), _now.getDate());
+  const CAL_MAX_DATE = new Date(_now.getFullYear() + 2, _now.getMonth(), _now.getDate());
 
   const fetchDashboardData = useCallback(async () => {
     if (!uid) return;
@@ -161,6 +166,15 @@ export default function Dashboard() {
       setRefreshing(false);
     }, 400);
   }, [selectedDate, uid, initialLoad]);
+
+  const fetchDensity = useCallback(async (date) => {
+    if (!uid) return;
+    const yearMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    try {
+      const res = await fetch(api(`/api/users/${uid}/density/${yearMonth}`), { credentials: 'include' });
+      if (res.ok) setDensityMap(await res.json());
+    } catch { /* non-critical */ }
+  }, [uid]);
 
   // Sync polling effect
   useEffect(() => {
@@ -241,7 +255,8 @@ export default function Dashboard() {
   useEffect(() => {
     if (!uid) { navigate('/login'); return; }
     fetchDashboardData();
-  }, [uid, navigate, fetchDashboardData]);
+    fetchDensity(new Date());
+  }, [uid, navigate, fetchDashboardData, fetchDensity]);
 
   useEffect(() => {
     if (!initialLoad && localStorage.getItem('pc_tour_pending') === 'true') {
@@ -269,9 +284,28 @@ export default function Dashboard() {
                   onChange={setSelectedDate}
                   value={selectedDate}
                   className="pc-calendar"
+                  minDate={CAL_MIN_DATE}
+                  maxDate={CAL_MAX_DATE}
+                  onActiveStartDateChange={({ activeStartDate }) => fetchDensity(activeStartDate)}
                   tileClassName={({ date }) => {
                     const jsDay = date.getDay();
                     return lazyDays.some(d => DAY_TO_JS[d] === jsDay) ? 'lazy-day' : null;
+                  }}
+                  tileContent={({ date, view }) => {
+                    if (view !== 'month') return null;
+                    const m = String(date.getMonth() + 1).padStart(2, '0');
+                    const d = String(date.getDate()).padStart(2, '0');
+                    const key = `${m}-${d}-${date.getFullYear()}`;
+                    const count = densityMap[key] || 0;
+                    if (count === 0) return null;
+                    const dots = Math.min(count <= 2 ? 1 : count <= 5 ? 2 : 3, 3);
+                    return (
+                      <div className="day-dots">
+                        {Array.from({ length: dots }).map((_, i) => (
+                          <span key={i} className="day-dot" />
+                        ))}
+                      </div>
+                    );
                   }}
                 />
               </div>
