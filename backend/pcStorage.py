@@ -65,6 +65,16 @@ def getCalendar(uid: str, year: str) -> list:
     return calendar
 
 # ── Tasks ─────────────────────────────────────────────────────────────────────
+def countTasks(uid: str) -> int:
+    if uid in _tasksCache:
+        return len(_tasksCache[uid])
+    return tasks_collection.count_documents({"uid": uid})
+
+def countEvents(uid: str) -> int:
+    if uid in _eventsCache:
+        return len(_eventsCache[uid])
+    return events_collection.count_documents({"uid": uid})
+
 def getTasks(uid: str) -> list:
     if uid in _tasksCache:
         return _tasksCache[uid]
@@ -189,9 +199,11 @@ def delUser(uid: str):
 
 # ── Canvas ────────────────────────────────────────────────────────────────────
 def storeCanvasCredentials(uid: str, token: str, institutionUrl: str) -> bool:
+    import datetime as _dt
     result = users_collection.update_one(
         {"uid": uid},
-        {"$set": {"canvasToken": token, "canvasUrl": institutionUrl}}
+        {"$set": {"canvasToken": token, "canvasUrl": institutionUrl,
+                  "lastTokenChange": _dt.datetime.now(_dt.timezone.utc).isoformat()}}
     )
     return result.modified_count == 1
 
@@ -221,8 +233,10 @@ def updateLastCanvasSync(uid: str, dateStr: str) -> bool:
     return result.modified_count == 1
 
 def storeCanvasIcsUrl(uid: str, icsUrl: str) -> bool:
+    import datetime as _dt
     result = users_collection.update_one(
         {"uid": uid},
-        {"$set": {"canvasIcsUrl": icsUrl}}
+        {"$set": {"canvasIcsUrl": icsUrl,
+                  "lastTokenChange": _dt.datetime.now(_dt.timezone.utc).isoformat()}}
     )
     return result.modified_count == 1

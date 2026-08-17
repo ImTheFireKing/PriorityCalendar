@@ -1,8 +1,19 @@
 import re
 import httpx
 import datetime as dTime
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import pcStorage
 import pcClasses
+
+DEFAULT_TZ = "America/New_York"
+
+def _to_local_date(dt_aware: dTime.datetime, tz_str: str) -> dTime.date:
+    """Convert a timezone-aware UTC datetime to a local date, respecting DST."""
+    try:
+        tz = ZoneInfo(tz_str)
+    except (ZoneInfoNotFoundError, Exception):
+        tz = ZoneInfo(DEFAULT_TZ)
+    return dt_aware.astimezone(tz).date()
 
 KEYWORD_MAP = {
     "exam":    ["exam", "midterm", "final"],
@@ -35,6 +46,7 @@ def syncUser(uid: str):
         return
     token = user.get("canvasToken")
     base_url = user.get("canvasUrl", "").rstrip("/")
+    user_tz = user.get("timezone", DEFAULT_TZ)
     if not token or not base_url:
         return
 
@@ -88,7 +100,8 @@ def syncUser(uid: str):
             due_date_str = None
             if due_at:
                 try:
-                    due_dt = dTime.datetime.fromisoformat(due_at.replace("Z", "+00:00")).date()
+                    due_dt_utc = dTime.datetime.fromisoformat(due_at.replace("Z", "+00:00"))
+                    due_dt = _to_local_date(due_dt_utc, user_tz)
                     if due_dt <= today:
                         continue
                     due_date_str = _formatDueDate(due_dt)
@@ -117,6 +130,7 @@ def syncUserIcs(uid: str):
     if not user:
         return
     ics_url = user.get("canvasIcsUrl")
+    user_tz = user.get("timezone", DEFAULT_TZ)
     if not ics_url:
         return
 
@@ -162,7 +176,14 @@ def syncUserIcs(uid: str):
         due_date_str = None
         if dtstart:
             dt = dtstart.dt
-            due_dt = dt.date() if hasattr(dt, "date") else dt
+            if isinstance(dt, dTime.datetime):
+                # Datetime with possible timezone — convert to local date respecting DST
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=dTime.timezone.utc)
+                due_dt = _to_local_date(dt, user_tz)
+            else:
+                # Already a plain date — no timezone conversion needed
+                due_dt = dt
             if due_dt <= today:
                 continue
             due_date_str = _formatDueDate(due_dt)
