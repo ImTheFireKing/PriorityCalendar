@@ -16,8 +16,6 @@ from fastapi import Response
 app = FastAPI()
 router = APIRouter(prefix="/api")
 
-CANVAS_COOLDOWN_SECONDS = 300  # 5 minutes
-
 def _validateYear(year_str: str, allow_past: bool = False):
     try:
         year = int(year_str)
@@ -504,6 +502,8 @@ def connectCanvas(uid: str, body: CanvasConnect, currentUid: str = Depends(get_c
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
     _check_token_cooldown(uid)
+    if not validateExternalUrl(body.institutionalUrl):
+        raise HTTPException(status_code=400, detail="Invalid or disallowed institution URL")
     test = httpx.get(
         f"{body.institutionalUrl.rstrip('/')}/api/v1/users/self",
         headers={"Authorization": f"Bearer {body.token}"}, timeout=8
@@ -562,8 +562,9 @@ class ConfirmCanvasTask(BaseModel):
 def confirmCanvasTask(uid: str, body: ConfirmCanvasTask, currentUid: str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
-    if len(pcStorage.getTasks(uid)) >= 250:
-        raise HTTPException(status_code=400, detail="Task limit reached (250 max)")
+    if pcStorage.countTasks(uid) >= MAX_TASKS:
+        raise HTTPException(status_code=429, detail=f"Task limit reached ({MAX_TASKS}). Remove some tasks before adding more.")
+    _validate_date(body.date)
     _validateYear(body.date[6:])
     calendar = pcStorage.getCalendar(uid, body.date[6:])
     newTask = main.createTask(uid, body.name, body.date, body.taskType, calendar, 0.0)

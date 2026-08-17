@@ -10,6 +10,25 @@ import pcClasses
 
 DEFAULT_TZ = "America/New_York"
 
+def validateExternalUrl(url: str) -> bool:
+    """Return True only if url is a public HTTP/HTTPS URL — rejects private/loopback IPs (SSRF guard)."""
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        return False
+    if parsed.scheme not in ("http", "https"):
+        return False
+    hostname = parsed.hostname
+    if not hostname:
+        return False
+    try:
+        addr = ipaddress.ip_address(socket.gethostbyname(hostname))
+    except Exception:
+        return False
+    if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved:
+        return False
+    return True
+
 def _to_local_date(dt_aware: dTime.datetime, tz_str: str) -> dTime.date:
     """Convert a timezone-aware UTC datetime to a local date, respecting DST."""
     try:
