@@ -64,10 +64,10 @@
 .feature-card {
   background: var(--bg-card);
   border-radius: 20px;
-  padding: 28px 28px 24px;
+  padding: 18px 20px 16px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
   box-shadow: 0 8px 54px rgba(0, 0, 0, 0.28);
   transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
@@ -89,7 +89,7 @@
 
 .feature-img {
   border-radius: 14px;
-  height: 240px;
+  height: 140px;
   width: 100%;
   position: relative;
   overflow: hidden;
