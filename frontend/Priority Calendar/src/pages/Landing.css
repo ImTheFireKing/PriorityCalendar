@@ -1,18 +1,17 @@
 .landing {
-  min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
 
 /* Hero */
 .hero {
-  flex: 1;
+  min-height: 45vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 80px 48px 100px;
+  padding: 56px 48px 64px;
   gap: 24px;
 }
 
@@ -210,7 +209,7 @@ img.feature-img {
   }
 
   .feature-img {
-    height: 180px;
+    height: 90px;
   }
 
   .footer {
