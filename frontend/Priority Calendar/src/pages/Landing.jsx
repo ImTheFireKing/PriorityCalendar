@@ -3,6 +3,7 @@ import { useAuthTrigger } from '../hooks/useAuthTrigger';
 import './Landing.css';
 import recommendedImg from '../assets/recommended.png';
 import canvasDemoImg from '../assets/CanvasDemo.png';
+import calendarAgendaImg from '../assets/calendarAgenda.png'
 
 const features = [
   {
@@ -11,8 +12,7 @@ const features = [
   },
   {
     title: 'See your month at a glance.',
-    gradient: 'radial-gradient(circle at 30% 50%, #5BC8DC 0%, #2EAABF 40%, #1A8A9E 100%)',
-    dots: true,
+    image: calendarAgendaImg,
   },
   {
     title: 'Add tasks and events — including those Canvas assignments.',
