@@ -5,14 +5,14 @@
 
 /* Hero */
 .hero {
-  min-height: 45vh;
+  min-height: 38vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 56px 48px 64px;
-  gap: 24px;
+  padding: 44px 48px 52px;
+  gap: 20px;
 }
 
 .hero-headline {
@@ -88,17 +88,25 @@
 
 .feature-img {
   border-radius: 14px;
-  height: 140px;
+  /* Caps how tall the features section can get so the whole page stays
+     within ~1 screen; scales down on short viewports. */
+  height: clamp(180px, 32vh, 330px);
   width: 100%;
   position: relative;
   overflow: hidden;
 }
 
 img.feature-img {
-  object-fit: contain;
   display: block;
   width: 100%;
-  height: 100%;
+  height: clamp(180px, 32vh, 330px);
+  /* cover (not contain) keeps the screenshots at full card width so their
+     text stays readable; the tall ones are cropped from the bottom instead
+     of being shrunk into an illegible sliver. */
+  object-fit: cover;
+  object-position: top center;
+  -webkit-mask-image: linear-gradient(to bottom, #000 82%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 82%, transparent 100%);
 }
 
 .feature-img--noise::after {
@@ -208,8 +216,9 @@ img.feature-img {
     gap: 12px;
   }
 
-  .feature-img {
-    height: 90px;
+  .feature-img,
+  img.feature-img {
+    height: 200px;
   }
 
   .footer {
