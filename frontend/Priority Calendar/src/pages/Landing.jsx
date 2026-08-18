@@ -21,7 +21,19 @@ const features = [
 ];
 
 export default function Landing() {
-  const { trigger: triggerGoogleLogin } = useAuthTrigger();
+  const { trigger: triggerGoogleLogin, authLoading, slowTip } = useAuthTrigger();
+
+  if (authLoading) return (
+    <div className="auth-overlay">
+      <div className="auth-overlay-spinner" />
+      <p className="auth-overlay-text">Signing you in…</p>
+      {slowTip && (
+        <p className="auth-overlay-tip">
+          This is taking a bit longer than expected — try refreshing the page.
+        </p>
+      )}
+    </div>
+  );
 
   return (
     <div className="landing">

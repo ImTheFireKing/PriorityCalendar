@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGoogleLogin } from '@react-oauth/google';
 import { api } from '../api';
@@ -6,6 +6,13 @@ import { api } from '../api';
 export function useAuthTrigger() {
   const navigate = useNavigate();
   const [authLoading, setAuthLoading] = useState(false);
+  const [slowTip, setSlowTip] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading) { setSlowTip(false); return; }
+    const t = setTimeout(() => setSlowTip(true), 20000);
+    return () => clearTimeout(t);
+  }, [authLoading]);
 
   const handleSuccess = async (credentialResponse) => {
     setAuthLoading(true);
@@ -26,11 +33,16 @@ export function useAuthTrigger() {
     }
   };
 
-  const trigger = useGoogleLogin({
+  const googleLogin = useGoogleLogin({
     onSuccess: handleSuccess,
     onError: () => { setAuthLoading(false); console.error('Google login failed'); },
     flow: 'implicit',
   });
 
-  return { trigger, authLoading };
+  const trigger = () => {
+    setAuthLoading(true);
+    googleLogin();
+  };
+
+  return { trigger, authLoading, slowTip };
 }
