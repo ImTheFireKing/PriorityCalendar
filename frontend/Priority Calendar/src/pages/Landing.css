@@ -55,9 +55,14 @@
 /* Features */
 .features {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 16px;
   padding: 0 24px 24px;
+}
+
+/* The calendar card carries two panels side by side, so it takes its own row. */
+.feature-card--wide {
+  grid-column: 1 / -1;
 }
 
 .feature-card {
@@ -86,11 +91,16 @@
   max-width: 260px;
 }
 
+/* Keep <picture> out of the card's flex layout so the <img> stays the flex item. */
+.feature-picture {
+  display: contents;
+}
+
 .feature-img {
   border-radius: 14px;
   /* Caps how tall the features section can get so the whole page stays
-     within ~1 screen; scales down on short viewports. */
-  height: clamp(180px, 32vh, 330px);
+     within ~1.5 screens; scales down on short viewports. */
+  height: clamp(160px, 28vh, 300px);
   width: 100%;
   position: relative;
   overflow: hidden;
@@ -99,7 +109,7 @@
 img.feature-img {
   display: block;
   width: 100%;
-  height: clamp(180px, 32vh, 330px);
+  height: clamp(160px, 28vh, 300px);
   /* cover (not contain) keeps the screenshots at full card width so their
      text stays readable; the tall ones are cropped from the bottom instead
      of being shrunk into an illegible sliver. */
@@ -107,6 +117,18 @@ img.feature-img {
   object-position: top center;
   -webkit-mask-image: linear-gradient(to bottom, #000 82%, transparent 100%);
   mask-image: linear-gradient(to bottom, #000 82%, transparent 100%);
+}
+
+/* calendarAgendaWide.png is a complete 990x510 composite — show all of it
+   rather than cropping, and cap its width so it never upscales past native. */
+.feature-card--wide img.feature-img {
+  height: clamp(200px, 38vh, 420px);
+  width: auto;
+  max-width: min(100%, 990px);
+  margin: 0 auto;
+  object-fit: contain;
+  -webkit-mask-image: none;
+  mask-image: none;
 }
 
 .feature-img--noise::after {
@@ -219,6 +241,17 @@ img.feature-img {
   .feature-img,
   img.feature-img {
     height: 200px;
+  }
+
+  /* Phones get the stacked portrait source, cropped like the other cards. */
+  .feature-card--wide img.feature-img {
+    height: 300px;
+    width: 100%;
+    max-width: none;
+    object-fit: cover;
+    object-position: top center;
+    -webkit-mask-image: linear-gradient(to bottom, #000 82%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 82%, transparent 100%);
   }
 
   .footer {

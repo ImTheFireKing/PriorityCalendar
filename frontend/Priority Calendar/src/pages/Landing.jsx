@@ -3,7 +3,8 @@ import { useAuthTrigger } from '../hooks/useAuthTrigger';
 import './Landing.css';
 import recommendedImg from '../assets/recommended.png';
 import canvasDemoImg from '../assets/CanvasDemo.png';
-import calendarAgendaImg from '../assets/calendarAgenda.png'
+import calendarAgendaImg from '../assets/calendarAgendaWide.png'
+import calendarAgendaTallImg from '../assets/calendarAgenda.png'
 
 const features = [
   {
@@ -11,12 +12,18 @@ const features = [
     image: recommendedImg,
   },
   {
-    title: 'See your month at a glance.',
-    image: calendarAgendaImg,
-  },
-  {
     title: 'Add tasks and events — including those Canvas assignments.',
     image: canvasDemoImg,
+  },
+  {
+    // Full-width row: the month grid and agenda sit side by side, so this one
+    // needs the whole width to stay legible.
+    title: 'See your month at a glance.',
+    image: calendarAgendaImg,
+    // One narrow column can't fit the panels side by side legibly, so phones
+    // fall back to the original stacked screenshot.
+    mobileImage: calendarAgendaTallImg,
+    wide: true,
   },
 ];
 
@@ -53,10 +60,15 @@ export default function Landing() {
 
       <section className="features">
         {features.map((f, i) => (
-          <div className="feature-card" key={i}>
+          <div className={`feature-card${f.wide ? ' feature-card--wide' : ''}`} key={i}>
             <p className="feature-title">{f.title}</p>
             {f.image
-              ? <img src={f.image} className="feature-img" alt={f.title} />
+              ? (
+                <picture className="feature-picture">
+                  {f.mobileImage && <source media="(max-width: 600px)" srcSet={f.mobileImage} />}
+                  <img src={f.image} className="feature-img" alt={f.title} />
+                </picture>
+              )
               : <div className={`feature-img${f.dots ? ' feature-img--dots' : ''}`} style={{ background: f.gradient }} />
             }
           </div>
