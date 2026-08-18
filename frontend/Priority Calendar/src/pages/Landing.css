@@ -96,7 +96,7 @@
 }
 
 img.feature-img {
-  object-fit: cover;
+  object-fit: contain;
   display: block;
   width: 100%;
   height: 100%;
