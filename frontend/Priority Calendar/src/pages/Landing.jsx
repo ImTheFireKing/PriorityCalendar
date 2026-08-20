@@ -1,5 +1,6 @@
 import Nav from '../components/Nav';
 import { useAuthTrigger } from '../hooks/useAuthTrigger';
+import AuthOverlay from '../components/AuthOverlay';
 import './Landing.css';
 import recommendedImg from '../assets/recommended.png';
 import canvasDemoImg from '../assets/CanvasDemo.png';
@@ -16,30 +17,24 @@ const features = [
     image: canvasDemoImg,
   },
   {
-    // Full-width row: the month grid and agenda sit side by side, so this one
-    // needs the whole width to stay legible.
     title: 'See your month at a glance.',
     image: calendarAgendaImg,
-    // One narrow column can't fit the panels side by side legibly, so phones
-    // fall back to the original stacked screenshot.
     mobileImage: calendarAgendaTallImg,
     wide: true,
   },
 ];
 
 export default function Landing() {
-  const { trigger: triggerGoogleLogin, authLoading, slowTip } = useAuthTrigger();
+  const { trigger: triggerGoogleLogin, authLoading, slowTip, authError, dismissError } = useAuthTrigger();
 
-  if (authLoading) return (
-    <div className="auth-overlay">
-      <div className="auth-overlay-spinner" />
-      <p className="auth-overlay-text">Signing you in…</p>
-      {slowTip && (
-        <p className="auth-overlay-tip">
-          This is taking a bit longer than expected — try refreshing the page.
-        </p>
-      )}
-    </div>
+  if (authLoading || authError) return (
+    <AuthOverlay
+      authLoading={authLoading}
+      slowTip={slowTip}
+      authError={authError}
+      onRetry={triggerGoogleLogin}
+      onDismiss={dismissError}
+    />
   );
 
   return (

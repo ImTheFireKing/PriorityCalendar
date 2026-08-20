@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useAuthTrigger } from '../hooks/useAuthTrigger';
+import AuthOverlay from './AuthOverlay';
 import './Nav.css';
 import logo from '../assets/PriorityCalendarSmallLogoTransparent.png';
 
@@ -10,7 +11,7 @@ export default function Nav() {
   const location = useLocation();
   const navigate = useNavigate();
   const isDashboard = DASHBOARD_PATHS.some(p => location.pathname.startsWith(p));
-  const { trigger: triggerLogin, authLoading, slowTip } = useAuthTrigger();
+  const { trigger: triggerLogin, authLoading, slowTip, authError, dismissError } = useAuthTrigger();
 
   const handleLogOut = () => {
     fetch(api('/api/auth/logout'), {
@@ -23,17 +24,13 @@ export default function Nav() {
 
   return (
     <>
-      {authLoading && (
-        <div className="auth-overlay">
-          <div className="auth-overlay-spinner" />
-          <p className="auth-overlay-text">Signing you in…</p>
-          {slowTip && (
-            <p className="auth-overlay-tip">
-              This is taking a bit longer than expected — try refreshing the page.
-            </p>
-          )}
-        </div>
-      )}
+      <AuthOverlay
+        authLoading={authLoading}
+        slowTip={slowTip}
+        authError={authError}
+        onRetry={triggerLogin}
+        onDismiss={dismissError}
+      />
 
       {isDashboard ? (
         <nav className="nav">
