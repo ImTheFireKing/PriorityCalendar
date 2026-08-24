@@ -298,5 +298,6 @@ class User:
         self.settings["Tlimit"] = 15
         self.settings["Elimit"] = 3
         self.settings["expired"] = 2
+        self.settings["hidePct"] = 0
         self.uid = uid
         # This lowkey isn't used at all; just used to show the frame for users

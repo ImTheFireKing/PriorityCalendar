@@ -209,6 +209,114 @@ def simulate_year():
         current += timedelta(days=1)
     print('Year simulation complete.')
 
+SHOWCASE_TAG = '[SC]'
+
+def _sc_name(base: str) -> str:
+    return f"{SHOWCASE_TAG} {base}"
+
+def seed_showcase():
+    """Seed a realistic-looking mix of tasks and events for demo screenshots.
+    Anchored around today (2026-08-17). All items are prefixed with [SC]
+    so `clear_showcase` can wipe them cleanly."""
+    print('seed_showcase')
+    today = date.today()
+    year  = str(today.year)
+    calendar = pcStorage.getCalendar(UID, year)
+
+    def d(offset: int) -> str:
+        return datestr(today + timedelta(days=offset))
+
+    # Stacked distribution across 14 days: some days empty, some crammed.
+    # (offset_days, name, type, alreadyDone)
+    tasks = [
+        # Day 0 (today, Mon) — 1 task
+        ( 0, 'MATH 308 Sec 2.4 Notes',        'homework', 15.0),
+
+        # Day 1 (Tue) — 2 tasks
+        ( 1, 'CSCE 314 Haskell Lab 1',        'homework',  0.0),
+        ( 1, 'ENGR 216 Pre-lab Reading',      'prep',     40.0),
+
+        # Day 2 (Wed) — 4 tasks (busy midweek)
+        ( 2, 'CSCE 331 Project 2 Milestone',  'project',  60.0),
+        ( 2, 'MATH 308 Homework 3',           'homework', 30.0),
+        ( 2, 'CSCE 314 Reading Response',     'homework',  0.0),
+        ( 2, 'ENGR 216 Lab Report 1',         'homework', 10.0),
+
+        # Day 3 (Thu) — 1 task
+        ( 3, 'CSCE 331 Quiz Prep',            'prep',      0.0),
+
+        # Day 4 (Fri) — 3 tasks
+        ( 4, 'CSCE 331 Quiz 1',               'quiz',      0.0),
+        ( 4, 'MATH 308 Homework 4',           'homework',  0.0),
+        ( 4, 'CSCE 314 Homework 2',           'homework', 20.0),
+
+        # Day 6 (Sun) — 1 task
+        ( 6, 'ENGR 216 Reading Response',     'homework',  0.0),
+
+        # Day 7 (Mon) — 5 tasks (nightmare Monday)
+        ( 7, 'MATH 308 Midterm 1',            'exam',      0.0),
+        ( 7, 'CSCE 331 Homework 3',           'homework', 15.0),
+        ( 7, 'CSCE 314 Final Project Kickoff','project',   5.0),
+        ( 7, 'ENGR 216 Homework 2',           'homework',  0.0),
+        ( 7, 'MATH 308 Study Sheet',          'prep',     25.0),
+
+        # Day 9 (Wed) — 2 tasks
+        ( 9, 'CSCE 314 Quiz 2',               'quiz',      0.0),
+        ( 9, 'CSCE 331 Team Meeting Prep',    'prep',      0.0),
+
+        # Day 10 (Thu) — 1 task
+        (10, 'ENGR 216 Lab Report 2',         'homework',  0.0),
+
+        # Day 13 (Sun) — 2 tasks
+        (13, 'CSCE 331 Midterm',              'exam',     10.0),
+        (13, 'MATH 308 Homework 5',           'homework',  0.0),
+    ]
+    events = [
+        # (offset_days, name, needsPrep, isImportant)
+        ( 0, 'Advisor Meeting',           True,  True),
+        ( 2, 'TAMUHack Info Night',       False, False),
+        ( 4, 'Career Fair',               True,  True),
+        ( 7, 'Study Group — CSCE 314',    False, False),
+        (10, 'Guest Lecture — Prof Chen', False, False),
+        (13, 'Hackathon Weekend',         True,  True),
+    ]
+
+    for offset, name, ttype, done in tasks:
+        n = _sc_name(name)
+        try:
+            main.createTask(UID, n, d(offset), ttype, calendar, alreadyDone=done)
+            print(f"  task  +{offset:>2}d  {ttype:<8}  {n}")
+        except Exception as e:
+            print(f"  SKIP task {n}: {e}")
+
+    for offset, name, prep, important in events:
+        n = _sc_name(name)
+        try:
+            main.createEvent(UID, n, d(offset), calendar, needsPrep=prep, isImportant=important)
+            print(f"  event +{offset:>2}d  imp={important} prep={prep}  {n}")
+        except Exception as e:
+            print(f"  SKIP event {n}: {e}")
+
+    flush_cache()
+    print(f"Seeded {len(tasks)} tasks and {len(events)} events for UID={UID}")
+
+def clear_showcase():
+    """Remove every task/event with the [SC] prefix for the testing UID."""
+    print('clear_showcase')
+    year = str(date.today().year)
+    calendar = pcStorage.getCalendar(UID, year)
+
+    tasks  = [t for t in pcStorage.getTasks(UID)  if t.getName().startswith(SHOWCASE_TAG)]
+    events = [e for e in pcStorage.getEvents(UID) if e.getName().startswith(SHOWCASE_TAG)]
+
+    for t in tasks:
+        main.deleteTask(UID, calendar, t)
+    for e in events:
+        main.deleteEvent(UID, e, calendar)
+
+    flush_cache()
+    print(f"Removed {len(tasks)} tasks and {len(events)} events.")
+
 def fuzz_test(operations: int = 10000):
     print(f'fuzz_test {operations}')
     calendar = pcStorage.getCalendar(UID, YEAR)
@@ -249,6 +357,8 @@ COMMANDS = {
     'restore':   restore_user,
     'simulate':  simulate_year,
     'fuzz':      fuzz_test,
+    'showcase':  seed_showcase,
+    'unshowcase': clear_showcase,
     'testlw':    test_last_worked_roundtrip,
     'testforced': test_forced_task_logic,
     'testsort':  test_events_sort,

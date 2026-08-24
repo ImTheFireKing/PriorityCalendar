@@ -505,6 +505,7 @@ class updateSetting(BaseModel):
     newELimit : int | None = None
     newTLimit : int | None = None
     newExpiration : str | None = None
+    newHidePct : int | None = None
 @router.patch("/users/{uid}/settings")
 def updateSettings(uid : str, dataGiven : updateSetting, currentUid : str = Depends(get_current_uid)):
     if uid != currentUid:
@@ -518,6 +519,8 @@ def updateSettings(uid : str, dataGiven : updateSetting, currentUid : str = Depe
         settings["Tlimit"] = dataGiven.newTLimit
     if dataGiven.newExpiration in ("1", "2", "4"):
         settings["expired"] = int(dataGiven.newExpiration)
+    if dataGiven.newHidePct is not None:
+        settings["hidePct"] = max(0, min(100, int(dataGiven.newHidePct)))
     pcStorage.storeSettings(uid, settings)
     return {"status" : "ok"}
 
