@@ -38,6 +38,7 @@ export default function Settings() {
   const [tLimit,   setTLimit]   = useState(15);
   const [eLimit,   setELimit]   = useState(3);
   const [expiry,   setExpiry]   = useState('2');
+  const [hidePct,  setHidePct]  = useState(0);
   const [loading,  setLoading]  = useState(true);
   const [saved,    setSaved]    = useState(false);
 
@@ -70,16 +71,18 @@ export default function Settings() {
 
     const fetchAll = async () => {
       try {
-        const [lazyRes, tRes, eRes, expRes] = await Promise.all([
+        const [lazyRes, tRes, eRes, expRes, hideRes] = await Promise.all([
           fetch(api(`/api/users/${uid}/settings?settingField=lazy`), {credentials: "include"}),
           fetch(api(`/api/users/${uid}/settings?settingField=Tlimit`), {credentials: "include"}),
           fetch(api(`/api/users/${uid}/settings?settingField=Elimit`), {credentials: "include"}),
           fetch(api(`/api/users/${uid}/settings?settingField=expired`), {credentials: "include"}),
+          fetch(api(`/api/users/${uid}/settings?settingField=hidePct`), {credentials: "include"}),
         ]);
         if (lazyRes.ok) setLazyDays(await lazyRes.json());
         if (tRes.ok)    setTLimit(await tRes.json());
         if (eRes.ok)    setELimit(await eRes.json());
         if (expRes.ok)  setExpiry(parseExpiry(await expRes.json()));
+        if (hideRes.ok) setHidePct(Number(await hideRes.json()) || 0);
       } catch (err) {
         console.error('Failed to load settings:', err);
       } finally {
@@ -189,10 +192,8 @@ export default function Settings() {
           newTLimit:     tLimit,
           newELimit:     eLimit,
           newExpiration: expiry,
-          // Kept in step here as well as at sign-in, so a user who saves
-          // settings after moving gets their day boundary corrected without
-          // waiting for their session to lapse.
-          newTimezone:   browserTimezone(),
+          newHidePct:    hidePct,
+          newTimezone: browserTimezone(),
         }),
         credentials: "include",
       });
@@ -280,6 +281,27 @@ export default function Settings() {
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
+          </section>
+
+          {/* ── Hide Low-Effort Recs ── */}
+          <section className="settings-section">
+            <h3>Hide Low-Effort Recommendations</h3>
+            <p className="settings-desc">
+              Hide tasks from Recommendations when today's suggested effort is
+              below this percentage. Set to 0 to show everything.
+            </p>
+            <div className="settings-row">
+              <label>
+                Minimum daily effort (%)
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={hidePct}
+                  onChange={(e) => setHidePct(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                />
+              </label>
+            </div>
           </section>
 
           {/* ── Canvas Integration ── */}

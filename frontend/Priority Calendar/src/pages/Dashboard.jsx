@@ -255,8 +255,12 @@ export default function Dashboard() {
   useEffect(() => {
     if (!uid) { navigate('/'); return; }
     fetchDashboardData();
+  }, [uid, navigate, fetchDashboardData]);
+
+  useEffect(() => {
+    if (!uid) return;
     fetchDensity(new Date());
-  }, [uid, navigate, fetchDashboardData, fetchDensity]);
+  }, [uid, fetchDensity]);
 
   useEffect(() => {
     if (!initialLoad && localStorage.getItem('pc_tour_pending') === 'true') {

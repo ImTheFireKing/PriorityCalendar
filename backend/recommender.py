@@ -77,6 +77,7 @@ def task_recommender(existence : list[Day], today : Day, settings = {"lazy" : []
     """Returns a list of (score, task, forced) tuples sorted descending by score.
     """
     today_date = today.date
+    hidePct = settings.get("hidePct", 0) if settings else 0
 
     dumList : list[tuple[int, Task, bool]] = []
 
@@ -84,6 +85,9 @@ def task_recommender(existence : list[Day], today : Day, settings = {"lazy" : []
         for day in existence:
             for task in day.tasks:
                 if task.getLastWorked() == today_date:
+                    continue
+                pct = percentCalculate(task, today, existence, settings)
+                if isinstance(pct, (int, float)) and pct < hidePct:
                     continue
                 dumList.append((compute_task_score(task, today), task, False))
     else:
@@ -95,6 +99,8 @@ def task_recommender(existence : list[Day], today : Day, settings = {"lazy" : []
                 if task.getLastWorked() == today_date:
                     continue
                 pct = percentCalculate(task, today, existence, settings)
+                if isinstance(pct, (int, float)) and pct < hidePct:
+                    continue
                 # Tasks requiring >=70% completion today are added unconditionally and
                 # flagged so the UI can surface them distinctly. They do not consume a
                 # slot in the limit — this is intentional product behaviour, not a bug.

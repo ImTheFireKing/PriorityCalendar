@@ -50,7 +50,7 @@ def googleAuth(body : GoogleTokenBody, response : Response):
     # Creates user in Mongo if not there, grabs from Mongo otherwise
     existing = pcStorage.getUser(googleUID)
     if not existing:
-        pcStorage.addUser(googleUID, {"lazy": [], "Tlimit": 15, "Elimit": 3, "expired": 2})
+        pcStorage.addUser(googleUID, {"lazy": [], "Tlimit": 15, "Elimit": 3, "expired": 2, "hidePct": 0})
     onboardedStatus = existing.get("onboarded", False) if existing else False
     # Refresh the stored zone every sign-in: people travel, and a stale zone
     # silently shifts when their percentages recalculate.
