@@ -26,6 +26,7 @@ _calendarCache:  dict = {}
 _tasksCache:     dict = {}
 _eventsCache:    dict = {}
 _settingsCache:  dict = {}
+_tzCache:        dict = {}
 _cacheTimestamp: dict = {}
 CACHE_TTL = timedelta(minutes=30)
 
@@ -170,6 +171,21 @@ def setSyncStatus(uid : str, status : bool):
 def getSyncStatus(uid : str):
     status = users_collection.find_one({"uid" : uid})
     return status.get("syncStatus", False) if status else False
+def getUserTimezone(uid: str) -> str | None:
+    """IANA zone name the user's browser last reported, or None if never set."""
+    if uid in _tzCache:
+        return _tzCache[uid]
+    user = users_collection.find_one({"uid": uid})
+    if user:
+        _tzCache[uid] = user.get("timezone")
+        return _tzCache[uid]
+    return None
+
+def setUserTimezone(uid: str, tz: str) -> bool:
+    result = users_collection.update_one({"uid": uid}, {"$set": {"timezone": tz}})
+    _tzCache.pop(uid, None)
+    return result.matched_count != 0
+
 def getSettings(uid: str) -> dict | None:
     if uid in _settingsCache:
         return _settingsCache[uid]
@@ -195,6 +211,7 @@ def delUser(uid: str):
     _tasksCache.pop(uid, None)
     _eventsCache.pop(uid, None)
     _settingsCache.pop(uid, None)
+    _tzCache.pop(uid, None)
     _invalidateCalendar(uid)
 
 # ── Canvas ────────────────────────────────────────────────────────────────────

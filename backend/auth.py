@@ -4,11 +4,11 @@ from google.oauth2 import id_token
 from google.auth.transport import requests as grequests
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
-import datetime as dTime
 import os
 import pcStorage
 import httpx
 import pcClasses
+import timeutil
 
 router = APIRouter()
 
@@ -19,6 +19,9 @@ SESSION_HOURS = 5
 
 class GoogleTokenBody(BaseModel):
     token : str
+    # IANA zone from the browser (Intl.DateTimeFormat). Optional so older
+    # clients keep working — they just fall back to timeutil.DEFAULT_TZ.
+    timezone : str | None = None
 
 def createSessionToken(uid : str, onboarded : bool) -> str:
     expire = datetime.utcnow() + timedelta(hours=SESSION_HOURS) 
@@ -49,7 +52,12 @@ def googleAuth(body : GoogleTokenBody, response : Response):
     if not existing:
         pcStorage.addUser(googleUID, {"lazy": [], "Tlimit": 15, "Elimit": 3, "expired": 2})
     onboardedStatus = existing.get("onboarded", False) if existing else False
-    today = pcClasses.Task._formatDate(dTime.date.today())
+    # Refresh the stored zone every sign-in: people travel, and a stale zone
+    # silently shifts when their percentages recalculate.
+    if body.timezone and timeutil.isValidTz(body.timezone):
+        if body.timezone != (existing.get("timezone") if existing else None):
+            pcStorage.setUserTimezone(googleUID, body.timezone)
+    today = pcClasses.Task._formatDate(timeutil.localToday(googleUID))
     if existing and existing.get("lastCanvasSync") != today:
         import threading, canvas
         if existing.get("canvasToken"):

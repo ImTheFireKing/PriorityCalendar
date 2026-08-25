@@ -23,6 +23,20 @@ const OFFLINE = {
   detail: 'Check your internet connection and try again.',
 };
 
+/*
+ * The backend decides which calendar day a user is on — when their task
+ * percentages re-split, chiefly — so it needs the zone the browser is in
+ * rather than the one the server happens to run in. Resolving it per sign-in
+ * keeps it current if they move.
+ */
+const browserTimezone = () => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+  } catch {
+    return null;
+  }
+};
+
 const SIGN_IN_FAILED = {
   icon: '🔒',
   title: "We couldn't sign you in",
@@ -49,7 +63,10 @@ export function useAuthTrigger() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ token: credentialResponse.access_token }),
+        body: JSON.stringify({
+          token: credentialResponse.access_token,
+          timezone: browserTimezone(),
+        }),
       });
 
       if (res.ok) {

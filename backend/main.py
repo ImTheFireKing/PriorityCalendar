@@ -1,5 +1,6 @@
 import pcClasses
 import recommender
+import timeutil
 from datetime import datetime
 import datetime as dTime
 import pcStorage
@@ -16,13 +17,14 @@ def checkTasks(uid : str, calendar : list[pcClasses.Day]):
     allTasks = pcStorage.getTasks(uid)
     settings = pcStorage.getSettings(uid)
     expiry = dTime.timedelta(0,0,0,0,0,0,settings['expired'])
+    today = timeutil.logicalToday(uid)
     for task in allTasks:
-        if task.getPercent() >= 100 or (dTime.datetime.today().date() - task.getDate() > expiry):
+        if task.getPercent() >= 100 or (today - task.getDate() > expiry):
             deleteTask(uid, calendar, task)
 
 def taskComplete(uid : str, task : pcClasses.Task, percentDone : float):
     task.updatePercent(percentDone)
-    task.setLastWorked(dTime.date.today())
+    task.setLastWorked(timeutil.logicalToday(uid))
     return pcStorage.updateTasks(uid, task)
 
 def deleteTask(uid : str, calendar : list[pcClasses.Day], task : pcClasses.Task):
@@ -41,8 +43,9 @@ def getThingsForDay(uid : str, day : pcClasses.Day):
 
 def getRecommendationsForToday(uid : str):
     settings = pcStorage.getSettings(uid)
-    calendar = pcStorage.getCalendar(uid, str(datetime.now().year))
-    today = pcClasses.Day(datetime.today().date())
+    todayDate = timeutil.logicalToday(uid)
+    calendar = pcStorage.getCalendar(uid, str(todayDate.year))
+    today = pcClasses.Day(todayDate)
     if settings:
         toDo = recommender.task_recommender(calendar, today, settings, settings["Tlimit"])
         events = recommender.event_recommender(calendar, today, settings["Elimit"])
@@ -98,8 +101,11 @@ def createEvent(uid : str, eventName : str, eventDate : str, existence : list[pc
 
 def checkEvents(uid : str, calendar : list[pcClasses.Day]):
     events = pcStorage.getEvents(uid)
+    # Same day boundary the recommender renders, or an event can be swept away
+    # while the dashboard is still listing it as today's.
+    today = timeutil.logicalToday(uid)
     for event in events:
-        if event.getDate() - datetime.today().date() < dTime.timedelta(0):
+        if event.getDate() - today < dTime.timedelta(0):
             deleteEvent(uid, event, calendar)
 
 def deleteEvent(uid : str, event : pcClasses.Events, calendar : list[pcClasses.Day]):

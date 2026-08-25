@@ -4,11 +4,11 @@ import ipaddress
 from urllib.parse import urlparse
 import httpx
 import datetime as dTime
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import pcStorage
 import pcClasses
+import timeutil
 
-DEFAULT_TZ = "America/New_York"
+DEFAULT_TZ = timeutil.DEFAULT_TZ
 
 def validateExternalUrl(url: str) -> bool:
     """Return True only if url is a public HTTP/HTTPS URL — rejects private/loopback IPs (SSRF guard)."""
@@ -31,13 +31,7 @@ def validateExternalUrl(url: str) -> bool:
 
 
 
-def _to_local_date(dt_aware: dTime.datetime, tz_str: str) -> dTime.date:
-    """Convert a timezone-aware UTC datetime to a local date, respecting DST."""
-    try:
-        tz = ZoneInfo(tz_str)
-    except (ZoneInfoNotFoundError, Exception):
-        tz = ZoneInfo(DEFAULT_TZ)
-    return dt_aware.astimezone(tz).date()
+_to_local_date = timeutil.toLocalDate
 
 KEYWORD_MAP = {
     "exam":    ["exam", "midterm", "final"],
@@ -70,12 +64,12 @@ def syncUser(uid: str):
         return
     token = user.get("canvasToken")
     base_url = user.get("canvasUrl", "").rstrip("/")
-    user_tz = user.get("timezone", DEFAULT_TZ)
+    user_tz = user.get("timezone") or DEFAULT_TZ
     if not token or not base_url:
         return
 
     headers = {"Authorization": f"Bearer {token}"}
-    today = dTime.date.today()
+    today = timeutil.localToday(uid)
     pcStorage.setSyncStatus(uid, True)
     try:
         courses_resp = httpx.get(
@@ -156,14 +150,14 @@ def syncUserIcs(uid: str):
     if not user:
         return
     ics_url = user.get("canvasIcsUrl")
-    user_tz = user.get("timezone", DEFAULT_TZ)
+    user_tz = user.get("timezone") or DEFAULT_TZ
     if not ics_url:
         return
 
     if not validateExternalUrl(ics_url):
         return
 
-    today = dTime.date.today()
+    today = timeutil.localToday(uid)
     pcStorage.setSyncStatus(uid, True)
     try:
         resp = httpx.get(ics_url, timeout=15, follow_redirects=True)

@@ -8,3 +8,4 @@ google-auth;
 python-jose[cryptography];
 pydantic;
 icalendar;
+tzdata;

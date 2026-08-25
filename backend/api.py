@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from auth import router as authRouter
 from auth import get_current_uid
 from canvas import validateExternalUrl
+import timeutil
 from fastapi import Depends
 from fastapi import Response
 
@@ -18,12 +19,12 @@ router = APIRouter(prefix="/api")
 
 CANVAS_COOLDOWN_SECONDS = 300  # 5 minutes
 
-def _validateYear(year_str: str, allow_past: bool = False):
+def _validateYear(year_str: str, allow_past: bool = False, uid: str | None = None):
     try:
         year = int(year_str)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date")
-    current = datetime.now().year
+    current = timeutil.localToday(uid).year if uid else datetime.now().year
     if allow_past:
         if year not in (current - 1, current, current + 1):
             raise HTTPException(status_code=400, detail="Date out of allowed range (±1 year from today)")
@@ -42,13 +43,13 @@ app.add_middleware(
 MAX_TASKS  = 200
 MAX_EVENTS = 100
 
-def _validate_date(date_str: str):
+def _validate_date(date_str: str, uid: str | None = None):
     """Validate MM-DD-YYYY date: must be >= today and within 2 years from now."""
     try:
         parsed = dTime.datetime.strptime(date_str, "%m-%d-%Y").date()
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format. Use MM-DD-YYYY.")
-    today = dTime.date.today()
+    today = timeutil.localToday(uid) if uid else dTime.date.today()
     max_date = dTime.date(today.year + 2, today.month, today.day)
     if parsed < today:
         raise HTTPException(status_code=400, detail="Date cannot be in the past.")
@@ -66,7 +67,7 @@ class CreateTask(BaseModel):
 def createTask(uid : str, dataGiven : CreateTask, currentUid : str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, details="Forbidden Resources")
-    _validate_date(dataGiven.date)
+    _validate_date(dataGiven.date, uid)
     if pcStorage.countTasks(uid) >= MAX_TASKS:
         raise HTTPException(status_code=429, detail=f"Task limit reached ({MAX_TASKS}). Remove some tasks before adding more.")
     # MM-DD-YYYY
@@ -101,7 +102,7 @@ def createRepeatTask(uid: str, dataGiven: CreateRepeatTask, currentUid: str = De
     except ValueError:
         raise HTTPException(status_code=400, detail="Dates must be in MM-DD-YYYY format.")
 
-    today = dTime.date.today()
+    today = timeutil.localToday(uid)
     max_date = dTime.date(today.year + 2, today.month, today.day)
     if start < today:
         raise HTTPException(status_code=400, detail="Start date cannot be in the past.")
@@ -165,7 +166,7 @@ def createRepeatEvent(uid: str, dataGiven: CreateRepeatEvent, currentUid: str = 
     except ValueError:
         raise HTTPException(status_code=400, detail="Dates must be in MM-DD-YYYY format.")
 
-    today = dTime.date.today()
+    today = timeutil.localToday(uid)
     max_date = dTime.date(today.year + 2, today.month, today.day)
     if start < today:
         raise HTTPException(status_code=400, detail="Start date cannot be in the past.")
@@ -300,7 +301,7 @@ class CreateEvent(BaseModel):
 def createEvent(uid : str, dataGiven : CreateEvent, currentUid : str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
-    _validate_date(dataGiven.date)
+    _validate_date(dataGiven.date, uid)
     if pcStorage.countEvents(uid) >= MAX_EVENTS:
         raise HTTPException(status_code=429, detail=f"Event limit reached ({MAX_EVENTS}). Remove some events before adding more.")
     calendar = pcStorage.getCalendar(uid, dataGiven.date[6:])
@@ -392,7 +393,7 @@ def deleteEvent(uid : str, dataGiven : DeleteEvent, currentUid : str = Depends(g
 def sendRecommendations(uid : str, currentUid : str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
-    calendar = pcStorage.getCalendar(uid, str(datetime.now().year))
+    calendar = pcStorage.getCalendar(uid, str(timeutil.logicalToday(uid).year))
     main.checkTasks(uid, calendar)
     main.checkEvents(uid, calendar)
     recommendations = main.getRecommendationsForToday(uid)
@@ -505,6 +506,7 @@ class updateSetting(BaseModel):
     newELimit : int | None = None
     newTLimit : int | None = None
     newExpiration : str | None = None
+    newTimezone : str | None = None
 @router.patch("/users/{uid}/settings")
 def updateSettings(uid : str, dataGiven : updateSetting, currentUid : str = Depends(get_current_uid)):
     if uid != currentUid:
@@ -518,6 +520,10 @@ def updateSettings(uid : str, dataGiven : updateSetting, currentUid : str = Depe
         settings["Tlimit"] = dataGiven.newTLimit
     if dataGiven.newExpiration in ("1", "2", "4"):
         settings["expired"] = int(dataGiven.newExpiration)
+    if dataGiven.newTimezone:
+        if not timeutil.isValidTz(dataGiven.newTimezone):
+            raise HTTPException(status_code=400, detail="Unknown timezone.")
+        pcStorage.setUserTimezone(uid, dataGiven.newTimezone)
     pcStorage.storeSettings(uid, settings)
     return {"status" : "ok"}
 

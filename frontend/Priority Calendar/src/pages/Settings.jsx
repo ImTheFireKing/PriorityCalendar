@@ -171,6 +171,14 @@ export default function Settings() {
     }
   };
 
+  const browserTimezone = () => {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+    } catch {
+      return null;
+    }
+  };
+
   const handleSave = async () => {
     try {
       const res = await fetch(api(`/api/users/${uid}/settings`), {
@@ -181,6 +189,10 @@ export default function Settings() {
           newTLimit:     tLimit,
           newELimit:     eLimit,
           newExpiration: expiry,
+          // Kept in step here as well as at sign-in, so a user who saves
+          // settings after moving gets their day boundary corrected without
+          // waiting for their session to lapse.
+          newTimezone:   browserTimezone(),
         }),
         credentials: "include",
       });
