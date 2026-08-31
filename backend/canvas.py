@@ -30,6 +30,26 @@ def validateExternalUrl(url: str) -> bool:
     return True
 
 
+MAX_REDIRECT_HOPS = 5
+
+def fetchExternal(url: str, timeout: int):
+    """GET url, following redirects manually so every hop is re-checked by validateExternalUrl.
+
+    httpx's own follow_redirects only validates the URL we hand it, so a public URL
+    can 302 to an internal address. Returns the final response, or None if any hop
+    points somewhere non-public or the chain is too long.
+    """
+    with httpx.Client(follow_redirects=False, timeout=timeout) as client:
+        for _ in range(MAX_REDIRECT_HOPS):
+            if not validateExternalUrl(url):
+                return None
+            resp = client.get(url)
+            if not resp.is_redirect:
+                return resp
+            url = str(resp.next_request.url)
+    return None
+
+
 
 _to_local_date = timeutil.toLocalDate
 
@@ -66,6 +86,9 @@ def syncUser(uid: str):
     base_url = user.get("canvasUrl", "").rstrip("/")
     user_tz = user.get("timezone") or DEFAULT_TZ
     if not token or not base_url:
+        return
+
+    if not validateExternalUrl(base_url):
         return
 
     headers = {"Authorization": f"Bearer {token}"}
@@ -160,8 +183,8 @@ def syncUserIcs(uid: str):
     today = timeutil.localToday(uid)
     pcStorage.setSyncStatus(uid, True)
     try:
-        resp = httpx.get(ics_url, timeout=15, follow_redirects=True)
-        if resp.status_code != 200:
+        resp = fetchExternal(ics_url, timeout=15)
+        if resp is None or resp.status_code != 200:
             return
         cal = iCal.from_ical(resp.content)
     except Exception:

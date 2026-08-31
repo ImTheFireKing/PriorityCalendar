@@ -23,8 +23,15 @@ const toInputDate = (isoString) => {
 
 export default function TaskCard({ data, isRec, uid, onRefresh }) {
   const isEvent = data.priority !== undefined || (data.importance !== undefined && data.needsPrep !== undefined);
+
+  // How much of this task is already finished (clamped — legacy rows may exceed 100),
+  // and how much headroom is left before it hits 100%.
+  const progressDone  = Math.min(Math.round(data.percentDone ?? 0), 100);
+  const remainingPct  = Math.max(0, 100 - progressDone);
+  const clampProgress = (n) => Math.max(0, Math.min(Math.round(n || 0), remainingPct));
+
   const [showInput, setShowInput]     = useState(false);
-  const [customPercent, setCustomPercent] = useState(Math.round(data.howMuch ?? 0));
+  const [customPercent, setCustomPercent] = useState(clampProgress(data.howMuch));
 
   // Edit state
   const [editing, setEditing]         = useState(false);
@@ -108,6 +115,7 @@ export default function TaskCard({ data, isRec, uid, onRefresh }) {
   };
 
   const dueDateDisplay = formatDate(data.dueDate || data.time || data.date);
+
 
   return (
     <div className={`task-card ${isEvent ? "event-card" : `task-card--${data.type ?? "task"}`} ${data.forced ? "task-card--forced" : ""}`}>
@@ -196,6 +204,26 @@ export default function TaskCard({ data, isRec, uid, onRefresh }) {
           </div>
         )}
 
+        {/* Progress already banked on this task — tasks only, hidden when untouched */}
+        {!isEvent && progressDone > 0 && (
+          <div className="task-progress">
+            <div className="task-progress-header">
+              <span className="task-progress-label">Progress</span>
+              <span className="task-progress-value">{progressDone}% complete</span>
+            </div>
+            <div
+              className="task-progress-track"
+              role="progressbar"
+              aria-valuenow={progressDone}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={`${data.name} progress`}
+            >
+              <div className="task-progress-fill" style={{ width: `${progressDone}%` }} />
+            </div>
+          </div>
+        )}
+
         {/* Recommendation: show target % + progress interaction */}
         {isRec && !isEvent && data.howMuch && (
           <div className={`rec-action ${data.forced ? "rec-action--forced" : ""}`}>
@@ -204,7 +232,7 @@ export default function TaskCard({ data, isRec, uid, onRefresh }) {
               {!showInput ? (
                 <>
                   <span className="rec-percent">Complete {Math.round(data.howMuch)}%</span>
-                  <button className="mark-done-btn" onClick={() => { setCustomPercent(Math.round(data.howMuch ?? 0)); setShowInput(true); }}>
+                  <button className="mark-done-btn" onClick={() => { setCustomPercent(clampProgress(data.howMuch)); setShowInput(true); }}>
                     ✓ Done for today
                   </button>
                 </>
@@ -213,9 +241,9 @@ export default function TaskCard({ data, isRec, uid, onRefresh }) {
                   <input
                     type="number"
                     min="0"
-                    max="100"
+                    max={remainingPct}
                     value={customPercent}
-                    onChange={(e) => setCustomPercent(Number(e.target.value))}
+                    onChange={(e) => setCustomPercent(clampProgress(e.target.value))}
                   />
                   <span className="rec-percent">%</span>
                   <button className="confirm-btn" onClick={handleMarkProgress}>Confirm</button>

@@ -23,7 +23,10 @@ def checkTasks(uid : str, calendar : list[pcClasses.Day]):
             deleteTask(uid, calendar, task)
 
 def taskComplete(uid : str, task : pcClasses.Task, percentDone : float):
+    """Apply a progress delta, clamping the running total to 0-100 so it can't overshoot.
+    Exactly 100 still trips the completion sweep in checkTasks."""
     task.updatePercent(percentDone)
+    task.percentDone = max(0.0, min(task.percentDone, 100.0))
     task.setLastWorked(timeutil.logicalToday(uid))
     return pcStorage.updateTasks(uid, task)
 

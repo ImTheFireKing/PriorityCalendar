@@ -9,7 +9,7 @@ from datetime import datetime
 from fastapi.middleware.cors import CORSMiddleware
 from auth import router as authRouter
 from auth import get_current_uid
-from canvas import validateExternalUrl
+from canvas import validateExternalUrl, fetchExternal
 import timeutil
 from fastapi import Depends
 from fastapi import Response
@@ -62,7 +62,7 @@ class CreateTask(BaseModel):
     date : str
     taskType : str
     special : str | None = None
-    alreadyDone : float = 0.0
+    alreadyDone : float = Field(0.0, ge=0, le=100)
 @router.post("/users/{uid}/tasks")
 def createTask(uid : str, dataGiven : CreateTask, currentUid : str = Depends(get_current_uid)):
     if uid != currentUid:
@@ -219,6 +219,7 @@ def getTask(uid : str, taskName : str, currentUid : str = Depends(get_current_ui
                 "name" : task.getName(),
                 "type" : task.getType(),
                 "dueDate" : task.getDate().isoformat(),
+                "percentDone" : round(min(task.getPercent(), 100), 1),
                 "otherDetails" : task.getSpecial()
                 
             }]}
@@ -229,7 +230,7 @@ class UpdateTask(BaseModel):
     taskName : str
     date : str | None = None
     special : str | None = None
-    percentChange : float | None = None
+    percentChange : float | None = Field(None, ge=-100, le=100)
 @router.patch("/users/{uid}/tasks")
 def updateTask(uid : str, dataGiven : UpdateTask, currentUid : str = Depends(get_current_uid)):
     #MM-DD-YYYY
@@ -406,6 +407,7 @@ def sendRecommendations(uid : str, currentUid : str = Depends(get_current_uid)):
                 "name" : task.getName(),
                 "type" : task.getType(),
                 "dueDate" : task.getDate().isoformat(),
+                "percentDone" : round(min(task.getPercent(), 100), 1),
                 "howMuch" : percent,
                 "otherDetails" : task.getSpecial(),     
                 "forced" : forced                # True = bypassed task limit due to high workload today
@@ -444,6 +446,7 @@ def getDailySchedule(uid : str, dateString: str, currentUid : str = Depends(get_
                     "name": task.getName(),
                     "type": task.getType(),
                     "dueDate": task.getDate().isoformat(),
+                    "percentDone": round(min(task.getPercent(), 100), 1),
                     "otherDetails": task.getSpecial(),
                 } for task in target_day.getTasks()
             ],
@@ -575,10 +578,15 @@ def connectCanvas(uid: str, body: CanvasConnect, currentUid: str = Depends(get_c
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
     _check_token_cooldown(uid)
-    test = httpx.get(
-        f"{body.institutionalUrl.rstrip('/')}/api/v1/users/self",
-        headers={"Authorization": f"Bearer {body.token}"}, timeout=8
-    )
+    if not validateExternalUrl(body.institutionalUrl):
+        raise HTTPException(status_code=400, detail="Institution URL must be a public http(s) address")
+    try:
+        test = httpx.get(
+            f"{body.institutionalUrl.rstrip('/')}/api/v1/users/self",
+            headers={"Authorization": f"Bearer {body.token}"}, timeout=8
+        )
+    except Exception:
+        raise HTTPException(status_code=400, detail="Could not reach that URL")
     if test.status_code != 200:
         raise HTTPException(status_code=400, detail="Canvas token invalid or URL incorrect")
     pcStorage.storeCanvasCredentials(uid, body.token, body.institutionalUrl)
@@ -595,10 +603,14 @@ def connectCanvasIcs(uid: str, body: CanvasIcsConnect, currentUid: str = Depends
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
     _check_token_cooldown(uid)
+    if not validateExternalUrl(body.icsUrl):
+        raise HTTPException(status_code=400, detail="ICS URL must be a public http(s) address")
     try:
-        test = httpx.get(body.icsUrl, timeout=8, follow_redirects=True)
+        test = fetchExternal(body.icsUrl, timeout=8)
     except Exception:
         raise HTTPException(status_code=400, detail="Could not reach that URL")
+    if test is None:
+        raise HTTPException(status_code=400, detail="URL redirected to a non-public address")
     if test.status_code != 200 or "BEGIN:VCALENDAR" not in test.text[:200]:
         raise HTTPException(status_code=400, detail="URL does not appear to be a valid Canvas ICS feed")
     pcStorage.storeCanvasIcsUrl(uid, body.icsUrl)
