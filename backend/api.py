@@ -1,12 +1,17 @@
 from fastapi import FastAPI, APIRouter
 from fastapi import HTTPException
+from fastapi import Request
 from pydantic import BaseModel, Field
 import main
 import pcStorage
-import httpx
 import datetime as dTime
 from datetime import datetime
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from ratelimit import limiter
+
 from auth import router as authRouter
 from auth import get_current_uid
 from canvas import validateExternalUrl, fetchExternal
@@ -15,6 +20,9 @@ from fastapi import Depends
 from fastapi import Response
 
 app = FastAPI()
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 router = APIRouter(prefix="/api")
 
 CANVAS_COOLDOWN_SECONDS = 300  # 5 minutes
@@ -574,18 +582,21 @@ def _check_token_cooldown(uid: str):
             pass
 
 @router.post("/users/{uid}/canvas/connect")
-def connectCanvas(uid: str, body: CanvasConnect, currentUid: str = Depends(get_current_uid)):
+@limiter.limit("5/hour")
+def connectCanvas(uid: str, request: Request, body: CanvasConnect, currentUid: str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
     _check_token_cooldown(uid)
     if not validateExternalUrl(body.institutionalUrl):
         raise HTTPException(status_code=400, detail="Institution URL must be a public http(s) address")
     try:
-        test = httpx.get(
+        test = fetchExternal(
             f"{body.institutionalUrl.rstrip('/')}/api/v1/users/self",
-            headers={"Authorization": f"Bearer {body.token}"}, timeout=8
+            timeout=8, headers={"Authorization": f"Bearer {body.token}"}
         )
     except Exception:
+        raise HTTPException(status_code=400, detail="Could not reach that URL")
+    if test is None:
         raise HTTPException(status_code=400, detail="Could not reach that URL")
     if test.status_code != 200:
         raise HTTPException(status_code=400, detail="Canvas token invalid or URL incorrect")
@@ -599,7 +610,8 @@ class CanvasIcsConnect(BaseModel):
     icsUrl: str
 
 @router.post("/users/{uid}/canvas/connect/ics")
-def connectCanvasIcs(uid: str, body: CanvasIcsConnect, currentUid: str = Depends(get_current_uid)):
+@limiter.limit("5/hour")
+def connectCanvasIcs(uid: str, request: Request, body: CanvasIcsConnect, currentUid: str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
     _check_token_cooldown(uid)
@@ -620,7 +632,8 @@ def connectCanvasIcs(uid: str, body: CanvasIcsConnect, currentUid: str = Depends
     return {"status": "ok"}
 
 @router.post("/users/{uid}/canvas/import")
-def importCanvas(uid: str, currentUid: str = Depends(get_current_uid)):
+@limiter.limit("10/hour")
+def importCanvas(uid: str, request: Request, currentUid: str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
     import threading, canvas

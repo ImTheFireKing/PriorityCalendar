@@ -5,7 +5,7 @@ import './AuthOverlay.css';
  * a sign-in is in flight, or an explanation when it fails — including when the
  * failure is ours (backend unreachable) rather than the user's.
  */
-export default function AuthOverlay({ authLoading, slowTip, authError, onRetry, onDismiss }) {
+export default function AuthOverlay({ authLoading, slowTip, authError, onRetry, retryButton, onDismiss }) {
   if (authError) {
     return (
       <div className="auth-overlay" role="alert">
@@ -13,9 +13,13 @@ export default function AuthOverlay({ authLoading, slowTip, authError, onRetry, 
         <p className="auth-overlay-title">{authError.title}</p>
         <p className="auth-overlay-detail">{authError.detail}</p>
         <div className="auth-overlay-actions">
-          <button className="auth-overlay-btn auth-overlay-btn--primary" onClick={onRetry}>
-            Try again
-          </button>
+          {/* Retrying now means re-rendering Google's own button, since the
+              ID-token flow has no imperative trigger. */}
+          {retryButton ?? (
+            <button className="auth-overlay-btn auth-overlay-btn--primary" onClick={onRetry}>
+              Try again
+            </button>
+          )}
           <button className="auth-overlay-btn auth-overlay-btn--ghost" onClick={onDismiss}>
             Go back
           </button>

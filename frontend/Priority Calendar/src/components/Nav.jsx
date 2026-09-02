@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../api';
+import { GoogleLogin } from '@react-oauth/google';
 import { useAuthTrigger } from '../hooks/useAuthTrigger';
 import AuthOverlay from './AuthOverlay';
 import './Nav.css';
@@ -11,7 +12,7 @@ export default function Nav() {
   const location = useLocation();
   const navigate = useNavigate();
   const isDashboard = DASHBOARD_PATHS.some(p => location.pathname.startsWith(p));
-  const { trigger: triggerLogin, authLoading, slowTip, authError, dismissError } = useAuthTrigger();
+  const { googleLoginProps, authLoading, slowTip, authError, dismissError } = useAuthTrigger();
 
   const handleLogOut = () => {
     fetch(api('/api/auth/logout'), {
@@ -28,7 +29,7 @@ export default function Nav() {
         authLoading={authLoading}
         slowTip={slowTip}
         authError={authError}
-        onRetry={triggerLogin}
+        retryButton={<GoogleLogin {...googleLoginProps} />}
         onDismiss={dismissError}
       />
 
@@ -57,7 +58,7 @@ export default function Nav() {
             <a href="/changelog" className="nav-link" target="_blank" rel="noreferrer">
               Changelog
             </a>
-            <button className="nav-logout" onClick={triggerLogin}>Log In</button>
+            <GoogleLogin {...googleLoginProps} />
           </div>
         </nav>
       )}

@@ -6,13 +6,19 @@ from jose import jwt, JWTError
 from datetime import datetime, timedelta
 import os
 import pcStorage
-import httpx
 import pcClasses
 import timeutil
+from ratelimit import limiter
 
 router = APIRouter()
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+if not GOOGLE_CLIENT_ID:
+    # verify_oauth2_token skips the audience check entirely when the audience is
+    # None, which would silently reopen the token-substitution hole. Refuse to start.
+    # RuntimeError, not HTTPException: this runs at import, outside any request,
+    # so nothing would turn an HTTPException into a response anyway.
+    raise RuntimeError("GOOGLE_CLIENT_ID is not configured")
 JWT_SECRET = os.getenv("JWT_SECRET")
 JWT_ALGORITHM = "HS256"
 SESSION_HOURS = 5
@@ -35,17 +41,20 @@ def verifySessionToken(token: str) -> str:
         raise HTTPException(status_code=401, detail="Session Expired/Invalid, Log In")
 
 @router.post("/auth/google")
-def googleAuth(body : GoogleTokenBody, response : Response):
-    userInfo = httpx.get(
-        "https://www.googleapis.com/oauth2/v3/userinfo",
-        headers={"Authorization": f"Bearer {body.token}"}
-    )
-    if userInfo.status_code != 200:
+@limiter.limit("20/minute")
+def googleAuth(request : Request, body : GoogleTokenBody, response : Response):
+    # An ID token is bound to our OAuth client via its `aud` claim, so a token
+    # minted for some other Google app can no longer be replayed here. The old
+    # userinfo probe accepted any valid Google access token whatsoever.
+    try:
+        info = id_token.verify_oauth2_token(body.token, grequests.Request(), GOOGLE_CLIENT_ID)
+    except ValueError:
+        # Bad signature, wrong audience, or expired. The exception text can echo
+        # token internals, so it is deliberately kept out of the response.
         raise HTTPException(status_code=401, detail="Invalid Google token")
 
-    info       = userInfo.json()
     googleUID = str(info["sub"])
-    email      = info["email"]
+    email      = info.get("email", "")
     name       = info.get("name", "")
     # Creates user in Mongo if not there, grabs from Mongo otherwise
     existing = pcStorage.getUser(googleUID)

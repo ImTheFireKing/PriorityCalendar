@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGoogleLogin } from '@react-oauth/google';
 import { api } from '../api';
 
 /*
@@ -64,7 +63,7 @@ export function useAuthTrigger() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          token: credentialResponse.access_token,
+          token: credentialResponse.credential,
           timezone: browserTimezone(),
         }),
       });
@@ -94,23 +93,20 @@ export function useAuthTrigger() {
     }
   };
 
-  const googleLogin = useGoogleLogin({
-    onSuccess: handleSuccess,
-    onError: (err) => {
-      console.error('Google login failed', err);
-      setAuthLoading(false);
-      setAuthError(SIGN_IN_FAILED);
-    },
-    flow: 'implicit',
-  });
-
-  const trigger = () => {
-    setAuthError(null);
-    setAuthLoading(true);
-    googleLogin();
+  const handleError = (err) => {
+    console.error('Google login failed', err);
+    setAuthLoading(false);
+    setAuthError(SIGN_IN_FAILED);
   };
+
+  /*
+   * The ID-token flow only comes from Google's own rendered button, so there is
+   * no imperative trigger to hand back any more. Callers spread these onto a
+   * <GoogleLogin> instead of wiring a plain onClick.
+   */
+  const googleLoginProps = { onSuccess: handleSuccess, onError: handleError };
 
   const dismissError = () => setAuthError(null);
 
-  return { trigger, authLoading, slowTip, authError, dismissError };
+  return { googleLoginProps, authLoading, slowTip, authError, dismissError };
 }

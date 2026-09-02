@@ -2,13 +2,30 @@ from datetime import datetime, timedelta
 import datetime as dTime
 import pcClasses
 from pymongo import MongoClient, ASCENDING
+from cryptography.fernet import Fernet, InvalidToken
 from dotenv import load_dotenv
+import logging
 import os
 
 
 load_dotenv()
+logger = logging.getLogger(__name__)
+
+# Canvas tokens grant full read/write access to a user's Canvas account, so they
+# are encrypted at rest. Refusing to start without the key is deliberate: falling
+# back to plaintext would defeat the point, and generating a key per process
+# would orphan every token already stored the next time the dyno restarts.
+CANVAS_TOKEN_KEY = os.getenv('CANVAS_TOKEN_KEY')
+if not CANVAS_TOKEN_KEY:
+    raise RuntimeError(
+        "CANVAS_TOKEN_KEY is not set. Generate one with "
+        "`python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\"` "
+        "and set it in the environment."
+    )
+_fernet = Fernet(CANVAS_TOKEN_KEY)
+
 undercroft = os.getenv('mongoConString')
-client = MongoClient(undercroft, tlsAllowInvalidCertificates=True)
+client = MongoClient(undercroft)
 client.admin.command('ping')
 db = client['PriorityCalendarDB']
 
@@ -217,12 +234,33 @@ def delUser(uid: str):
 # ── Canvas ────────────────────────────────────────────────────────────────────
 def storeCanvasCredentials(uid: str, token: str, institutionUrl: str) -> bool:
     import datetime as _dt
+    encryptedToken = _fernet.encrypt(token.encode()).decode()
     result = users_collection.update_one(
         {"uid": uid},
-        {"$set": {"canvasToken": token, "canvasUrl": institutionUrl,
+        {"$set": {"canvasToken": encryptedToken, "canvasUrl": institutionUrl,
                   "lastTokenChange": _dt.datetime.now(_dt.timezone.utc).isoformat()}}
     )
     return result.modified_count == 1
+
+def getCanvasToken(uid: str) -> str | None:
+    """Decrypted Canvas token for uid, or None if there is none usable.
+
+    Returns None rather than raising on InvalidToken — that means the stored value
+    was written under a different key, or predates the encryption migration. The
+    only caller runs in a background sync thread where an exception would be lost.
+    """
+    user = users_collection.find_one({"uid": uid}, {"canvasToken": 1})
+    stored = user.get("canvasToken") if user else None
+    if not stored:
+        return None
+    try:
+        return _fernet.decrypt(stored.encode()).decode()
+    except InvalidToken:
+        logger.warning(
+            "Canvas token for %s could not be decrypted — wrong CANVAS_TOKEN_KEY, "
+            "or the value predates the encryption migration.", uid
+        )
+        return None
 
 def getPendingCanvasTasks(uid: str) -> list:
     user = users_collection.find_one({"uid": uid}, {"pendingCanvasTasks": 1})

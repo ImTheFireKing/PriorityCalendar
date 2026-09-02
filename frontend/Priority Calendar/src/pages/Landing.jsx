@@ -1,4 +1,5 @@
 import Nav from '../components/Nav';
+import { GoogleLogin } from '@react-oauth/google';
 import { useAuthTrigger } from '../hooks/useAuthTrigger';
 import AuthOverlay from '../components/AuthOverlay';
 import './Landing.css';
@@ -25,14 +26,14 @@ const features = [
 ];
 
 export default function Landing() {
-  const { trigger: triggerGoogleLogin, authLoading, slowTip, authError, dismissError } = useAuthTrigger();
+  const { googleLoginProps, authLoading, slowTip, authError, dismissError } = useAuthTrigger();
 
   if (authLoading || authError) return (
     <AuthOverlay
       authLoading={authLoading}
       slowTip={slowTip}
       authError={authError}
-      onRetry={triggerGoogleLogin}
+      retryButton={<GoogleLogin {...googleLoginProps} />}
       onDismiss={dismissError}
     />
   );
@@ -48,9 +49,9 @@ export default function Landing() {
         <p className="hero-sub">
           Stop drowning in hundreds of deadlines — float above them instead.
         </p>
-        <button className="hero-cta" onClick={triggerGoogleLogin}>
-          Get Started
-        </button>
+        <div className="hero-cta-google">
+          <GoogleLogin {...googleLoginProps} />
+        </div>
       </section>
 
       <section className="features">

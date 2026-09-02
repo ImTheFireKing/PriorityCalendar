@@ -1,11 +1,13 @@
 fastapi;
 uvicorn[standard];
-pymongo[srv]==3.12;
+pymongo[srv]>=4.6,<5;
 python-dotenv;
 requests;
 httpx;
 google-auth;
 python-jose[cryptography];
+cryptography;
 pydantic;
 icalendar;
 tzdata;
+slowapi;

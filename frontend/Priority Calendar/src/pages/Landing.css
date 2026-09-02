@@ -52,6 +52,14 @@
   box-shadow: 0 16px 64px rgba(0, 0, 0, 0.48);
 }
 
+/* Google renders its own button in an iframe and will not take our styling, so
+   the wrapper just reproduces the old CTA's placement. */
+.hero-cta-google {
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
+}
+
 /* Features */
 .features {
   display: grid;
