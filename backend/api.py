@@ -666,6 +666,10 @@ def confirmCanvasTask(uid: str, body: ConfirmCanvasTask, currentUid: str = Depen
     if body.special:
         main.updateTask(newTask, "special", body.special, uid, calendar)
     pcStorage.removePendingCanvasTask(uid, body.canvasId)
+    # Remember the id, not the name: the user may have renamed the task on import,
+    # and completing it deletes the task outright — both would let the next sync
+    # re-suggest the same assignment.
+    pcStorage.addHandledCanvasId(uid, body.canvasId)
     return {"status": "ok"}
 
 @router.delete("/users/{uid}/canvas/pending/{canvasId}")
@@ -673,6 +677,7 @@ def dismissCanvasTask(uid: str, canvasId: str, currentUid: str = Depends(get_cur
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbidden Resources")
     pcStorage.removePendingCanvasTask(uid, canvasId)
+    pcStorage.addHandledCanvasId(uid, canvasId)
     return {"status": "ok"}
 
 @router.delete("/users/{uid}")
@@ -687,6 +692,9 @@ def deleteAccount(uid: str, response: Response, currentUid: str = Depends(get_cu
 def clearCanvasChamber(uid : str, currentUid : str = Depends(get_current_uid)):
     if uid != currentUid:
         raise HTTPException(status_code=403, detail="Forbiden Resources")
+    pcStorage.addHandledCanvasIds(
+        uid, [p["canvasId"] for p in pcStorage.getPendingCanvasTasks(uid) if p.get("canvasId")]
+    )
     newChamber = pcStorage.storePendingCanvasTasks(uid, [])
     if not newChamber:
         raise HTTPException(status_code=500, detail="Failed to clear all suggestions.")

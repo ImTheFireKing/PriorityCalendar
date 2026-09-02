@@ -204,6 +204,7 @@ def syncUser(uid: str):
 
         existing_names   = {t.getName().lower() for t in pcStorage.getTasks(uid)}
         existing_pending = {p["canvasId"] for p in pcStorage.getPendingCanvasTasks(uid)}
+        handled_ids      = set(pcStorage.getHandledCanvasIds(uid))
         new_pending      = list(pcStorage.getPendingCanvasTasks(uid))
 
         for course in courses:
@@ -233,6 +234,8 @@ def syncUser(uid: str):
                 if not name or not canvas_id:
                     continue
                 if canvas_id in existing_pending:
+                    continue
+                if canvas_id in handled_ids:
                     continue
                 if name.lower() in existing_names:
                     continue
@@ -295,6 +298,7 @@ def syncUserIcs(uid: str):
 
         existing_names   = {t.getName().lower() for t in pcStorage.getTasks(uid)}
         existing_pending = {p["canvasId"] for p in pcStorage.getPendingCanvasTasks(uid)}
+        handled_ids      = set(pcStorage.getHandledCanvasIds(uid))
         new_pending      = list(pcStorage.getPendingCanvasTasks(uid))
 
         for component in cal.walk():
@@ -315,6 +319,8 @@ def syncUserIcs(uid: str):
             if not name or not canvas_id:
                 continue
             if canvas_id in existing_pending:
+                continue
+            if canvas_id in handled_ids:
                 continue
             if name.lower() in existing_names:
                 continue

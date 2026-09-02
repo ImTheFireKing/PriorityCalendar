@@ -271,7 +271,41 @@ def storePendingCanvasTasks(uid: str, tasks: list) -> bool:
         {"uid": uid},
         {"$set": {"pendingCanvasTasks": tasks}}
     )
+    # matched, not modified: writing the value it already holds is a no-op for
+    # Mongo but still a successful store. Keying on modified_count made clearing
+    # an already-empty chamber report failure.
+    return result.matched_count != 0
+
+MAX_HANDLED_CANVAS_IDS = 1000
+
+def getHandledCanvasIds(uid: str) -> list:
+    """Canvas ids the user has already confirmed or dismissed."""
+    user = users_collection.find_one({"uid": uid}, {"handledCanvasIds": 1})
+    return user.get("handledCanvasIds", []) if user else []
+
+def addHandledCanvasIds(uid: str, canvasIds: list) -> bool:
+    """Record Canvas ids as dealt with so a later sync does not re-suggest them.
+
+    The id is stable where the task name is not: it survives the user renaming the
+    task on import, completing it (which deletes the task outright), and dismissing
+    the suggestion. Capped via $slice for the same reason pendingCanvasTasks is —
+    an unbounded array eventually pushes the user document past MongoDB's 16 MB
+    ceiling and every write to it starts failing.
+    """
+    if not canvasIds:
+        return True
+    existing = set(getHandledCanvasIds(uid))
+    fresh = [c for c in canvasIds if c not in existing]
+    if not fresh:
+        return True
+    result = users_collection.update_one(
+        {"uid": uid},
+        {"$push": {"handledCanvasIds": {"$each": fresh, "$slice": -MAX_HANDLED_CANVAS_IDS}}}
+    )
     return result.modified_count == 1
+
+def addHandledCanvasId(uid: str, canvasId: str) -> bool:
+    return addHandledCanvasIds(uid, [canvasId])
 
 def removePendingCanvasTask(uid: str, canvasId: str) -> bool:
     result = users_collection.update_one(
